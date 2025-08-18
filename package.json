@@ -1,0 +1,47 @@
+{
+  "name": "secure-patient-portal",
+  "version": "1.0.0",
+  "description": "Secure Patient Portal with Risk Assessment - Healthcare Security Demo",
+  "main": "server/server.js",
+  "scripts": {
+    "start": "node server/server.js",
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "nodemon server/server.js",
+    "dev:client": "live-server client --port=8080 --cors",
+    "build": "echo 'Building project...'",
+    "test": "jest",
+    "test:unit": "jest --testPathPattern=tests/unit",
+    "test:integration": "jest --testPathPattern=tests/integration",
+    "test:coverage": "jest --coverage",
+    "db:reset": "node scripts/reset-database.js",
+    "db:setup": "node -e \"const fs = require('fs'); fs.mkdirSync('./database', {recursive: true}); console.log('Database directory created');\"",
+    "lint": "eslint server/ client/assets/js/",
+    "lint:fix": "eslint server/ client/assets/js/ --fix"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "express-rate-limit": "^6.10.0",
+    "express-validator": "^7.0.1",
+    "helmet": "^7.0.0",
+    "cors": "^2.8.5",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "sequelize": "^6.32.1",
+    "sqlite3": "^5.1.6",
+    "dotenv": "^16.3.1",
+    "winston": "^3.10.0",
+    "geoip-lite": "^1.4.7",
+    "useragent": "^2.3.0",
+    "express-session": "^1.17.3",
+    "connect-session-sequelize": "^7.1.7",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "concurrently": "^8.2.0",
+    "live-server": "^1.2.2"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
