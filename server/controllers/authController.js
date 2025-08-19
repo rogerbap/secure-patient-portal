@@ -1,3 +1,4 @@
+//server/controllers/authController.js
 /**
  * Authentication Controller
  * 
@@ -13,7 +14,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { validationResult } = require('express-validator');
 const User = require('../models/User');
-const SecurityLog = require('../models/SecurityLog');
+const SecurityLog = require('../models/securityLog');
 const authService = require('../services/authService');
 const riskAssessmentService = require('../services/riskAssessmentService');
 const auditService = require('../services/auditService');

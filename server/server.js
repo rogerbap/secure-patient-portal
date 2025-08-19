@@ -1,4 +1,4 @@
-
+//server/server.js
 require('dotenv').config();
 
 // Import core modules
@@ -65,7 +65,7 @@ async function initializeModels() {
   try {
     // Import models to ensure they're registered with Sequelize
     require('./models/User');
-    require('./models/SecurityLog');
+    require('./models/securityLog');
     
     // Future models can be added here:
     // require('./models/Appointment');

@@ -1,3 +1,4 @@
+//server/services/auditService.js
 /**
  * Audit Service
  * 
@@ -6,7 +7,7 @@
  * and data access patterns in healthcare applications.
  */
 
-const SecurityLog = require('../models/SecurityLog');
+const SecurityLog = require('../models/securityLog');
 const logger = require('../utils/logger');
 const geoip = require('geoip-lite');
 

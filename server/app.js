@@ -1,9 +1,9 @@
 /**
- * Secure Patient Portal - Complete Express Application Configuration
+ * Secure Patient Portal - Express Application Configuration
  * 
- * Configures Express app with comprehensive security middleware, CORS settings,
- * database integration, and API routes. Implements healthcare-grade security 
- * measures including rate limiting, input validation, and audit logging.
+ * Updated to include all routes and enhanced middleware configuration.
+ * Implements healthcare-grade security measures with comprehensive
+ * route handling and error management.
  */
 
 const express = require('express');
@@ -20,6 +20,9 @@ const auditService = require('./services/auditService');
 const { globalRateLimit, authRateLimit } = require('./middleware/rateLimit');
 const { logApiAccess } = require('./middleware/auth');
 
+// Import routes
+const apiRoutes = require('./routes/index');
+
 // Create Express application
 const app = express();
 
@@ -27,8 +30,6 @@ const app = express();
  * Security Configuration
  * Implements comprehensive security headers and policies
  */
-
-// Helmet for security headers
 app.use(helmet({
   contentSecurityPolicy: {
     directives: {
@@ -171,44 +172,44 @@ app.use('/api', globalRateLimit); // General API rate limiting
 app.use('/api', logApiAccess);
 
 /**
- * Health Check Endpoint
- * Provides system status for monitoring
+ * Mount API Routes
+ * All API routes are handled through the centralized router
  */
-app.get('/api/health', async (req, res) => {
-  try {
-    const healthStatus = {
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      version: process.env.npm_package_version || '1.0.0',
-      environment: process.env.NODE_ENV || 'development',
-      uptime: process.uptime(),
-      features: {
-        riskAssessment: process.env.RISK_ASSESSMENT_ENABLED === 'true',
-        authentication: true,
-        rateLimit: true,
-        auditLogging: true
-      }
-    };
-    
-    res.status(200).json(healthStatus);
-    
-  } catch (error) {
-    logger.error('Health check failed:', error);
-    res.status(503).json({
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      error: 'Health check failed'
+app.use('/api', apiRoutes);
+
+/**
+ * Root endpoint - redirect to login or serve app info
+ */
+app.get('/', (req, res) => {
+  // Check if this is an API request
+  if (req.headers.accept && req.headers.accept.includes('application/json')) {
+    res.json({
+      name: 'HealthSecure Portal',
+      version: '1.0.0',
+      description: 'Secure Patient Portal with Advanced Risk Assessment',
+      api: {
+        baseUrl: `/api`,
+        documentation: `/api/docs`,
+        health: `/api/health`
+      },
+      frontend: {
+        login: `/login.html`,
+        dashboard: `/dashboard/`
+      },
+      timestamp: new Date().toISOString()
     });
+  } else {
+    // Serve the login page for browser requests
+    res.sendFile(path.join(__dirname, '../client/login.html'));
   }
 });
 
 /**
- * Demo API Endpoint
- * Provides API information and demo accounts
+ * Demo endpoint for showcasing API capabilities
  */
-app.get('/api/demo', (req, res) => {
+app.get('/demo', (req, res) => {
   res.json({
-    title: 'Secure Patient Portal API',
+    title: 'HealthSecure Portal Demo',
     version: '1.0.0',
     description: 'Healthcare security demonstration with risk assessment',
     timestamp: new Date().toISOString(),
@@ -229,283 +230,86 @@ app.get('/api/demo', (req, res) => {
         email: 'patient@demo.com',
         password: 'SecurePass123!',
         role: 'patient',
-        riskLevel: 'Low (25/100)'
+        riskLevel: 'Low (25/100)',
+        description: 'Standard patient account with normal access patterns'
       },
       provider: {
         email: 'doctor@demo.com',
         password: 'SecurePass123!',
         role: 'provider',
-        riskLevel: 'Low (15/100)'
+        riskLevel: 'Low (15/100)',
+        description: 'Healthcare provider with trusted network access'
       },
       admin: {
         email: 'admin@demo.com',
         password: 'SecurePass123!',
         role: 'admin',
-        riskLevel: 'Medium (35/100)'
+        riskLevel: 'Medium (35/100)',
+        description: 'System administrator with elevated privileges'
       },
       suspicious: {
         email: 'suspicious@demo.com',
         password: 'SecurePass123!',
         role: 'patient',
-        riskLevel: 'High (85/100)'
+        riskLevel: 'High (85/100)',
+        description: 'High-risk scenario demonstrating security response'
       }
     },
     endpoints: {
       authentication: '/api/auth',
+      dashboard: '/api/dashboard',
+      security: '/api/security',
       health: '/api/health',
       documentation: '/api/docs'
+    },
+    quickStart: {
+      login: 'POST /api/auth/login',
+      dashboard: 'GET /api/dashboard/{role}',
+      profile: 'GET /api/auth/profile'
     }
   });
 });
 
 /**
- * Mock Authentication Endpoint
- * Simulates complete authentication with risk assessment
+ * Handle client-side routing for SPA
+ * Serves index.html for non-API routes to support client-side routing
  */
-app.post('/api/auth/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
-    
-    // Input validation
-    if (!email || !password) {
-      await auditService.logSecurityEvent({
-        eventType: 'LOGIN_FAILED_VALIDATION',
-        severity: 'low',
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-        details: {
-          reason: 'Missing email or password',
-          email: email || 'not provided'
-        }
-      });
+app.get('/dashboard/*', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/dashboard/patient.html'));
+});
 
-      return res.status(400).json({
-        success: false,
-        message: 'Email and password are required',
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-    // Demo users with different risk profiles
-    const users = {
-      'patient@demo.com': { 
-        id: '550e8400-e29b-41d4-a716-446655440001',
-        role: 'patient', 
-        name: 'John Patient', 
-        riskScore: 25,
-        riskFactors: {
-          location: { status: 'success', text: 'Trusted Location' },
-          device: { status: 'success', text: 'Recognized Device' },
-          timing: { status: 'success', text: 'Normal Hours' },
-          velocity: { status: 'success', text: 'Normal Pattern' }
-        }
-      },
-      'doctor@demo.com': { 
-        id: '550e8400-e29b-41d4-a716-446655440002',
-        role: 'provider', 
-        name: 'Dr. Sarah Smith', 
-        riskScore: 15,
-        riskFactors: {
-          location: { status: 'success', text: 'Hospital Network' },
-          device: { status: 'success', text: 'Work Computer' },
-          timing: { status: 'success', text: 'Work Hours' },
-          velocity: { status: 'success', text: 'Normal Pattern' }
-        }
-      },
-      'admin@demo.com': { 
-        id: '550e8400-e29b-41d4-a716-446655440003',
-        role: 'admin', 
-        name: 'Admin User', 
-        riskScore: 35,
-        riskFactors: {
-          location: { status: 'warning', text: 'New Location' },
-          device: { status: 'success', text: 'Recognized Device' },
-          timing: { status: 'success', text: 'Normal Hours' },
-          velocity: { status: 'success', text: 'Normal Pattern' }
-        }
-      },
-      'suspicious@demo.com': { 
-        id: '550e8400-e29b-41d4-a716-446655440004',
-        role: 'patient', 
-        name: 'Suspicious User', 
-        riskScore: 85,
-        riskFactors: {
-          location: { status: 'danger', text: 'Unknown Location' },
-          device: { status: 'danger', text: 'New Device' },
-          timing: { status: 'warning', text: 'Unusual Hours' },
-          velocity: { status: 'danger', text: 'Multiple Rapid Attempts' }
-        }
-      }
-    };
-    
-    // Simulate authentication delay
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (users[email] && password === 'SecurePass123!') {
-      const user = users[email];
-      
-      // Log successful authentication
-      await auditService.logUserAction({
-        userId: user.id,
-        action: 'USER_LOGIN',
-        details: {
-          email,
-          role: user.role,
-          riskScore: user.riskScore,
-          loginMethod: 'password'
-        },
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
-      });
+app.get('/login', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/login.html'));
+});
 
-      // Determine risk level
-      let riskLevel = 'LOW';
-      let securityAction = 'Login approved - All security checks passed';
-      
-      if (user.riskScore >= 80) {
-        riskLevel = 'HIGH';
-        securityAction = 'High risk detected - Additional verification may be required';
-        
-        await auditService.logSecurityEvent({
-          eventType: 'HIGH_RISK_LOGIN_DETECTED',
-          severity: 'high',
-          userId: user.id,
-          ipAddress: req.ip,
-          userAgent: req.get('User-Agent'),
-          details: {
-            email,
-            riskScore: user.riskScore,
-            riskFactors: user.riskFactors
-          }
-        });
-      } else if (user.riskScore >= 30) {
-        riskLevel = 'MEDIUM';
-        securityAction = 'Medium risk detected - Enhanced monitoring enabled';
-      }
-
-      res.json({
-        success: true,
-        message: 'Login successful',
-        user: {
-          id: user.id,
-          email,
-          role: user.role,
-          name: user.name
-        },
-        riskAssessment: {
-          riskScore: user.riskScore,
-          riskLevel,
-          factors: user.riskFactors,
-          securityAction,
-          requiresAdditionalVerification: riskLevel === 'HIGH'
-        },
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      // Log failed authentication
-      await auditService.logSecurityEvent({
-        eventType: 'LOGIN_FAILED_INVALID_CREDENTIALS',
-        severity: 'medium',
-        ipAddress: req.ip,
-        userAgent: req.get('User-Agent'),
-        details: {
-          email,
-          reason: 'Invalid email or password'
-        }
-      });
-
-      res.status(401).json({
-        success: false,
-        message: 'Invalid email or password',
-        timestamp: new Date().toISOString()
-      });
-    }
-    
-  } catch (error) {
-    logger.error('Login error:', error);
-    
-    res.status(500).json({
-      success: false,
-      message: 'Login failed. Please try again.',
-      timestamp: new Date().toISOString()
-    });
+/**
+ * 404 Handler for non-API routes
+ * Returns appropriate response based on request type
+ */
+app.use((req, res, next) => {
+  // Check if this is an API request
+  if (req.originalUrl.startsWith('/api/')) {
+    // API 404 is handled by the API routes
+    return next();
   }
-});
 
-/**
- * API Documentation Endpoint
- * Serves API documentation
- */
-app.get('/api/docs', (req, res) => {
-  res.json({
-    title: 'Secure Patient Portal API Documentation',
-    version: '1.0.0',
-    description: 'Healthcare security demonstration with comprehensive risk assessment',
-    baseUrl: `${req.protocol}://${req.get('host')}/api`,
-    endpoints: {
-      health: {
-        method: 'GET',
-        path: '/health',
-        description: 'System health check',
-        authentication: false
-      },
-      demo: {
-        method: 'GET',
-        path: '/demo',
-        description: 'API information and demo accounts',
-        authentication: false
-      },
-      login: {
-        method: 'POST',
-        path: '/auth/login',
-        description: 'User authentication with risk assessment',
-        authentication: false,
-        body: {
-          email: 'string (required)',
-          password: 'string (required)'
-        }
-      },
-      docs: {
-        method: 'GET',
-        path: '/docs',
-        description: 'API documentation',
-        authentication: false
-      }
-    },
-    security: {
-      authentication: 'JWT Bearer Token',
-      rateLimit: '100 requests per 15 minutes',
-      cors: 'Restricted to allowed origins',
-      headers: 'Comprehensive security headers via Helmet.js'
-    },
-    compliance: {
-      hipaa: 'Designed with HIPAA compliance in mind',
-      auditLogging: 'All actions logged for audit trails',
-      dataEncryption: 'Sensitive data encrypted at rest and in transit'
-    }
-  });
-});
-
-/**
- * 404 Handler for API routes
- * Returns JSON error for API endpoints
- */
-app.use('/api/*', (req, res) => {
-  logger.warn(`API endpoint not found: ${req.method} ${req.originalUrl}`);
-  res.status(404).json({
-    error: 'API endpoint not found',
-    message: `The requested endpoint ${req.method} ${req.originalUrl} does not exist`,
-    timestamp: new Date().toISOString(),
-    availableEndpoints: ['/api/health', '/api/demo', '/api/auth/login', '/api/docs']
-  });
-});
-
-/**
- * Catch-all for client-side routing
- * Serves index.html for non-API routes (SPA support)
- */
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/index.html'));
+  // For non-API requests, check accept header
+  if (req.headers.accept && req.headers.accept.includes('application/json')) {
+    res.status(404).json({
+      error: 'Page not found',
+      message: `The requested page ${req.originalUrl} does not exist`,
+      timestamp: new Date().toISOString(),
+      availablePages: [
+        '/',
+        '/login',
+        '/dashboard/',
+        '/demo'
+      ]
+    });
+  } else {
+    // Serve 404 page or redirect to login
+    res.status(404).sendFile(path.join(__dirname, '../client/login.html'));
+  }
 });
 
 /**
@@ -513,13 +317,14 @@ app.get('*', (req, res) => {
  * Centralized error handling with security considerations
  */
 app.use((error, req, res, next) => {
-  logger.error('Unhandled error:', {
+  logger.error('Unhandled application error:', {
     error: error.message,
     stack: error.stack,
     url: req.originalUrl,
     method: req.method,
     ip: req.ip,
-    userAgent: req.get('User-Agent')
+    userAgent: req.get('User-Agent'),
+    requestId: req.id
   });
   
   // Log security event for server errors
@@ -531,7 +336,8 @@ app.use((error, req, res, next) => {
     endpoint: req.originalUrl,
     details: {
       error: error.message,
-      method: req.method
+      method: req.method,
+      requestId: req.id
     }
   }).catch(auditError => {
     logger.error('Failed to log security event:', auditError);
@@ -540,19 +346,41 @@ app.use((error, req, res, next) => {
   // Don't leak sensitive information in production
   const isDevelopment = process.env.NODE_ENV === 'development';
   
-  const errorResponse = {
-    error: 'Internal server error',
-    message: isDevelopment ? error.message : 'Something went wrong',
-    timestamp: new Date().toISOString(),
-    requestId: req.id // If you add request ID middleware
-  };
-  
-  // Add stack trace only in development
-  if (isDevelopment) {
-    errorResponse.stack = error.stack;
+  // Check if this is an API request
+  if (req.originalUrl.startsWith('/api/') || 
+      (req.headers.accept && req.headers.accept.includes('application/json'))) {
+    
+    const errorResponse = {
+      success: false,
+      error: 'Internal server error',
+      message: isDevelopment ? error.message : 'Something went wrong',
+      timestamp: new Date().toISOString(),
+      requestId: req.id
+    };
+    
+    // Add stack trace only in development
+    if (isDevelopment) {
+      errorResponse.stack = error.stack;
+    }
+    
+    res.status(error.status || 500).json(errorResponse);
+  } else {
+    // For non-API requests, serve error page
+    res.status(500).sendFile(path.join(__dirname, '../client/login.html'));
   }
-  
-  res.status(error.status || 500).json(errorResponse);
+});
+
+/**
+ * Graceful shutdown handling
+ */
+process.on('SIGTERM', () => {
+  logger.info('SIGTERM received. Starting graceful shutdown...');
+  // Perform cleanup operations here
+});
+
+process.on('SIGINT', () => {
+  logger.info('SIGINT received. Starting graceful shutdown...');
+  // Perform cleanup operations here
 });
 
 module.exports = app;

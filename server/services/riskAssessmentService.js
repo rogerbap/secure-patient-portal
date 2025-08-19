@@ -1,3 +1,4 @@
+//server/services/riskAssessmentService.js
 /**
  * Risk Assessment Service
  * 
@@ -13,7 +14,7 @@
 
 const geoip = require('geoip-lite');
 const useragent = require('useragent');
-const SecurityLog = require('../models/SecurityLog');
+const SecurityLog = require('../models/securityLog');
 const User = require('../models/User');
 const logger = require('../utils/logger');
 const { Op } = require('sequelize');

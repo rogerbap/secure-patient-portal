@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Dashboard - HealthSecure Portal</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="stylesheet" href="../assets/css/patient.css">
+    <link rel="icon" type="image/x-icon" href="../assets/images/favicon.ico">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="brand-section">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <span class="brand-name">HealthSecure</span>
+                </div>
+                <div class="user-context">
+                    <span class="role-badge patient">Patient Portal</span>
+                </div>
+            </div>
+
+            <nav class="main-nav">
+                <ul class="nav-links">
+                    <li><a href="#overview" class="nav-link active" data-section="overview">
+                        <i class="fas fa-home"></i>Overview
+                    </a></li>
+                    <li><a href="#appointments" class="nav-link" data-section="appointments">
+                        <i class="fas fa-calendar-alt"></i>Appointments
+                    </a></li>
+                    <li><a href="#records" class="nav-link" data-section="records">
+                        <i class="fas fa-file-medical"></i>Medical Records
+                    </a></li>
+                    <li><a href="#messages" class="nav-link" data-section="messages">
+                        <i class="fas fa-envelope"></i>Messages
+                        <span class="notification-badge">3</span>
+                    </a></li>
+                    <li><a href="#prescriptions" class="nav-link" data-section="prescriptions">
+                        <i class="fas fa-pills"></i>Prescriptions
+                    </a></li>
+                </ul>
+            </nav>
+
+            <div class="header-actions">
+                <button class="action-btn notifications" onclick="toggleNotifications()">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-dot"></span>
+                </button>
+                <div class="user-menu">
+                    <button class="user-avatar" onclick="toggleUserMenu()">
+                        <img src="../assets/images/patient-avatar.jpg" alt="Patient Avatar" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="avatar-fallback">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span class="user-name" id="userName">John Patient</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="#profile" class="dropdown-item">
+                            <i class="fas fa-user-edit"></i>Edit Profile
+                        </a>
+                        <a href="#settings" class="dropdown-item">
+                            <i class="fas fa-cog"></i>Settings
+                        </a>
+                        <a href="#security" class="dropdown-item">
+                            <i class="fas fa-shield-alt"></i>Security
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" onclick="handleLogout()">
+                            <i class="fas fa-sign-out-alt"></i>Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Content -->
+    <main class="dashboard-main">
+        <!-- Security Status Bar -->
+        <div class="security-status-bar">
+            <div class="security-indicator">
+                <div class="status-icon safe">
+                    <i class="fas fa-shield-check"></i>
+                </div>
+                <div class="status-info">
+                    <span class="status-text">Secure Session Active</span>
+                    <small class="status-details">Risk Level: Low | Last Login: Today, 09:15 AM</small>
+                </div>
+            </div>
+            <div class="session-info">
+                <span class="session-timer" id="sessionTimer">Session: 1h 45m remaining</span>
+                <button class="extend-session-btn" onclick="extendSession()">
+                    <i class="fas fa-clock"></i>Extend
+                </button>
+            </div>
+        </div>
+
+        <!-- Overview Section -->
+        <section class="dashboard-section active" id="overview">
+            <div class="section-header">
+                <h2>Welcome back, <span id="patientName">John</span>!</h2>
+                <p class="section-subtitle">Here's your health overview for today</p>
+            </div>
+
+            <!-- Quick Stats -->
+            <div class="stats-grid">
+                <div class="stat-card upcoming">
+                    <div class="stat-icon">
+                        <i class="fas fa-calendar-check"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" data-target="2">0</div>
+                        <div class="stat-label">Upcoming Appointments</div>
+                        <div class="stat-change positive">+1 this week</div>
+                    </div>
+                </div>
+                <div class="stat-card results">
+                    <div class="stat-icon">
+                        <i class="fas fa-clipboard-list"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" data-target="1">0</div>
+                        <div class="stat-label">Pending Results</div>
+                        <div class="stat-change">Blood work ready</div>
+                    </div>
+                </div>
+                <div class="stat-card messages">
+                    <div class="stat-icon">
+                        <i class="fas fa-envelope-open"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" data-target="3">0</div>
+                        <div class="stat-label">Unread Messages</div>
+                        <div class="stat-change">2 from Dr. Smith</div>
+                    </div>
+                </div>
+                <div class="stat-card prescriptions">
+                    <div class="stat-icon">
+                        <i class="fas fa-prescription-bottle"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" data-target="4">0</div>
+                        <div class="stat-label">Active Prescriptions</div>
+                        <div class="stat-change">1 needs refill</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="dashboard-grid">
+                <div class="dashboard-card recent-activity">
+                    <div class="card-header">
+                        <h3><i class="fas fa-clock"></i>Recent Activity</h3>
+                        <button class="view-all-btn">View All</button>
+                    </div>
+                    <div class="activity-list" id="activityList">
+                        <div class="activity-item">
+                            <div class="activity-icon appointment">
+                                <i class="fas fa-calendar-plus"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">Annual Physical Exam Scheduled</div>
+                                <div class="activity-meta">
+                                    <span class="activity-provider">Dr. Sarah Smith</span>
+                                    <span class="activity-time">January 15, 2024 at 10:00 AM</span>
+                                </div>
+                            </div>
+                            <div class="activity-status confirmed">Confirmed</div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon result">
+                                <i class="fas fa-vial"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">Blood Test Results Available</div>
+                                <div class="activity-meta">
+                                    <span class="activity-provider">Dr. Sarah Smith</span>
+                                    <span class="activity-time">January 10, 2024 at 2:30 PM</span>
+                                </div>
+                            </div>
+                            <div class="activity-status available">Available</div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon message">
+                                <i class="fas fa-comment-medical"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">Prescription Refill Approved</div>
+                                <div class="activity-meta">
+                                    <span class="activity-provider">Dr. Sarah Smith</span>
+                                    <span class="activity-time">January 8, 2024 at 9:15 AM</span>
+                                </div>
+                            </div>
+                            <div class="activity-status unread">Unread</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="dashboard-card quick-actions">
+                    <div class="card-header">
+                        <h3><i class="fas fa-bolt"></i>Quick Actions</h3>
+                    </div>
+                    <div class="actions-grid">
+                        <button class="action-tile" onclick="navigateToSection('appointments')">
+                            <div class="action-icon">
+                                <i class="fas fa-calendar-plus"></i>
+                            </div>
+                            <div class="action-label">Schedule Appointment</div>
+                        </button>
+                        <button class="action-tile" onclick="navigateToSection('messages')">
+                            <div class="action-icon">
+                                <i class="fas fa-envelope"></i>
+                            </div>
+                            <div class="action-label">Message Provider</div>
+                        </button>
+                        <button class="action-tile" onclick="navigateToSection('records')">
+                            <div class="action-icon">
+                                <i class="fas fa-download"></i>
+                            </div>
+                            <div class="action-label">Download Records</div>
+                        </button>
+                        <button class="action-tile" onclick="navigateToSection('prescriptions')">
+                            <div class="action-icon">
+                                <i class="fas fa-pills"></i>
+                            </div>
+                            <div class="action-label">Refill Prescription</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Health Summary -->
+            <div class="dashboard-card health-summary">
+                <div class="card-header">
+                    <h3><i class="fas fa-heartbeat"></i>Health Summary</h3>
+                    <span class="last-updated">Last updated: Today</span>
+                </div>
+                <div class="health-metrics">
+                    <div class="metric-item">
+                        <div class="metric-label">Next Appointment</div>
+                        <div class="metric-value">January 15, 2024</div>
+                        <div class="metric-detail">Annual Physical with Dr. Smith</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Active Conditions</div>
+                        <div class="metric-value">2 Conditions</div>
+                        <div class="metric-detail">Hypertension, Type 2 Diabetes</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Allergies</div>
+                        <div class="metric-value">2 Known</div>
+                        <div class="metric-detail">Penicillin, Shellfish</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Emergency Contact</div>
+                        <div class="metric-value">Jane Doe</div>
+                        <div class="metric-detail">Spouse - (555) 123-4567</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Appointments Section -->
+        <section class="dashboard-section" id="appointments">
+            <div class="section-header">
+                <h2>Appointments</h2>
+                <button class="primary-btn" onclick="scheduleAppointment()">
+                    <i class="fas fa-plus"></i>Schedule New
+                </button>
+            </div>
+
+            <div class="appointments-container">
+                <div class="appointments-filters">
+                    <button class="filter-btn active" data-filter="all">All</button>
+                    <button class="filter-btn" data-filter="upcoming">Upcoming</button>
+                    <button class="filter-btn" data-filter="past">Past</button>
+                    <button class="filter-btn" data-filter="cancelled">Cancelled</button>
+                </div>
+
+                <div class="appointments-list">
+                    <div class="appointment-card upcoming">
+                        <div class="appointment-date">
+                            <div class="date-month">Jan</div>
+                            <div class="date-day">15</div>
+                            <div class="date-year">2024</div>
+                        </div>
+                        <div class="appointment-details">
+                            <div class="appointment-title">Annual Physical Examination</div>
+                            <div class="appointment-provider">
+                                <i class="fas fa-user-md"></i>Dr. Sarah Smith, MD
+                            </div>
+                            <div class="appointment-time">
+                                <i class="fas fa-clock"></i>10:00 AM - 11:00 AM
+                            </div>
+                            <div class="appointment-location">
+                                <i class="fas fa-map-marker-alt"></i>Main Campus, Room 204
+                            </div>
+                        </div>
+                        <div class="appointment-actions">
+                            <button class="btn-secondary">
+                                <i class="fas fa-video"></i>Join Video
+                            </button>
+                            <button class="btn-outline">
+                                <i class="fas fa-edit"></i>Reschedule
+                            </button>
+                            <button class="btn-danger">
+                                <i class="fas fa-times"></i>Cancel
+                            </button>
+                        </div>
+                        <div class="appointment-status confirmed">Confirmed</div>
+                    </div>
+
+                    <div class="appointment-card upcoming">
+                        <div class="appointment-date">
+                            <div class="date-month">Feb</div>
+                            <div class="date-day">03</div>
+                            <div class="date-year">2024</div>
+                        </div>
+                        <div class="appointment-details">
+                            <div class="appointment-title">Diabetes Follow-up</div>
+                            <div class="appointment-provider">
+                                <i class="fas fa-user-md"></i>Dr. Michael Johnson, MD
+                            </div>
+                            <div class="appointment-time">
+                                <i class="fas fa-clock"></i>2:30 PM - 3:00 PM
+                            </div>
+                            <div class="appointment-location">
+                                <i class="fas fa-map-marker-alt"></i>Endocrinology Clinic
+                            </div>
+                        </div>
+                        <div class="appointment-actions">
+                            <button class="btn-secondary">
+                                <i class="fas fa-phone"></i>Call Provider
+                            </button>
+                            <button class="btn-outline">
+                                <i class="fas fa-edit"></i>Reschedule
+                            </button>
+                            <button class="btn-danger">
+                                <i class="fas fa-times"></i>Cancel
+                            </button>
+                        </div>
+                        <div class="appointment-status confirmed">Confirmed</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Medical Records Section -->
+        <section class="dashboard-section" id="records">
+            <div class="section-header">
+                <h2>Medical Records</h2>
+                <button class="primary-btn" onclick="requestRecords()">
+                    <i class="fas fa-download"></i>Request Records
+                </button>
+            </div>
+
+            <div class="records-container">
+                <div class="records-categories">
+                    <div class="category-card">
+                        <div class="category-icon">
+                            <i class="fas fa-vial"></i>
+                        </div>
+                        <div class="category-info">
+                            <h4>Lab Results</h4>
+                            <p>5 recent reports</p>
+                        </div>
+                        <button class="view-btn">View All</button>
+                    </div>
+                    <div class="category-card">
+                        <div class="category-icon">
+                            <i class="fas fa-x-ray"></i>
+                        </div>
+                        <div class="category-info">
+                            <h4>Imaging</h4>
+                            <p>3 scans available</p>
+                        </div>
+                        <button class="view-btn">View All</button>
+                    </div>
+                    <div class="category-card">
+                        <div class="category-icon">
+                            <i class="fas fa-file-medical-alt"></i>
+                        </div>
+                        <div class="category-info">
+                            <h4>Visit Notes</h4>
+                            <p>12 visit summaries</p>
+                        </div>
+                        <button class="view-btn">View All</button>
+                    </div>
+                    <div class="category-card">
+                        <div class="category-icon">
+                            <i class="fas fa-syringe"></i>
+                        </div>
+                        <div class="category-info">
+                            <h4>Immunizations</h4>
+                            <p>Current vaccination record</p>
+                        </div>
+                        <button class="view-btn">View All</button>
+                    </div>
+                </div>
+
+                <div class="recent-records">
+                    <h3>Recent Records</h3>
+                    <div class="records-list">
+                        <div class="record-item">
+                            <div class="record-icon lab">
+                                <i class="fas fa-vial"></i>
+                            </div>
+                            <div class="record-info">
+                                <div class="record-title">Complete Blood Count (CBC)</div>
+                                <div class="record-date">January 10, 2024</div>
+                                <div class="record-provider">Dr. Sarah Smith</div>
+                            </div>
+                            <div class="record-actions">
+                                <button class="btn-secondary">
+                                    <i class="fas fa-eye"></i>View
+                                </button>
+                                <button class="btn-outline">
+                                    <i class="fas fa-download"></i>Download
+                                </button>
+                            </div>
+                        </div>
+                        <div class="record-item">
+                            <div class="record-icon imaging">
+                                <i class="fas fa-x-ray"></i>
+                            </div>
+                            <div class="record-info">
+                                <div class="record-title">Chest X-Ray</div>
+                                <div class="record-date">December 15, 2023</div>
+                                <div class="record-provider">Dr. Emily Chen</div>
+                            </div>
+                            <div class="record-actions">
+                                <button class="btn-secondary">
+                                    <i class="fas fa-eye"></i>View
+                                </button>
+                                <button class="btn-outline">
+                                    <i class="fas fa-download"></i>Download
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Messages Section -->
+        <section class="dashboard-section" id="messages">
+            <div class="section-header">
+                <h2>Messages</h2>
+                <button class="primary-btn" onclick="composeMessage()">
+                    <i class="fas fa-plus"></i>New Message
+                </button>
+            </div>
+
+            <div class="messages-container">
+                <div class="messages-sidebar">
+                    <div class="message-filters">
+                        <button class="filter-btn active" data-filter="all">
+                            All Messages <span class="count">8</span>
+                        </button>
+                        <button class="filter-btn" data-filter="unread">
+                            Unread <span class="count">3</span>
+                        </button>
+                        <button class="filter-btn" data-filter="providers">
+                            From Providers <span class="count">6</span>
+                        </button>
+                        <button class="filter-btn" data-filter="system">
+                            System <span class="count">2</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="messages-content">
+                    <div class="message-list">
+                        <div class="message-item unread">
+                            <div class="message-avatar">
+                                <img src="../assets/images/dr-smith.jpg" alt="Dr. Smith" 
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="avatar-fallback">DS</div>
+                            </div>
+                            <div class="message-content">
+                                <div class="message-header">
+                                    <div class="sender-name">Dr. Sarah Smith</div>
+                                    <div class="message-time">2 hours ago</div>
+                                </div>
+                                <div class="message-subject">Your lab results are ready for review</div>
+                                <div class="message-preview">Your recent blood work shows normal glucose levels. Please schedule a follow-up...</div>
+                            </div>
+                            <div class="message-status">
+                                <i class="fas fa-circle"></i>
+                            </div>
+                        </div>
+
+                        <div class="message-item unread">
+                            <div class="message-avatar">
+                                <div class="avatar-fallback system">
+                                    <i class="fas fa-cog"></i>
+                                </div>
+                            </div>
+                            <div class="message-content">
+                                <div class="message-header">
+                                    <div class="sender-name">HealthSecure System</div>
+                                    <div class="message-time">1 day ago</div>
+                                </div>
+                                <div class="message-subject">Appointment reminder</div>
+                                <div class="message-preview">This is a reminder about your upcoming appointment on January 15th...</div>
+                            </div>
+                            <div class="message-status">
+                                <i class="fas fa-circle"></i>
+                            </div>
+                        </div>
+
+                        <div class="message-item">
+                            <div class="message-avatar">
+                                <img src="../assets/images/dr-smith.jpg" alt="Dr. Smith"
+                                     onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                <div class="avatar-fallback">DS</div>
+                            </div>
+                            <div class="message-content">
+                                <div class="message-header">
+                                    <div class="sender-name">Dr. Sarah Smith</div>
+                                    <div class="message-time">3 days ago</div>
+                                </div>
+                                <div class="message-subject">Prescription refill approved</div>
+                                <div class="message-preview">Your metformin prescription has been approved for refill. Please pick up...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Prescriptions Section -->
+        <section class="dashboard-section" id="prescriptions">
+            <div class="section-header">
+                <h2>Prescriptions</h2>
+                <button class="primary-btn" onclick="requestRefill()">
+                    <i class="fas fa-redo"></i>Request Refill
+                </button>
+            </div>
+
+            <div class="prescriptions-container">
+                <div class="prescription-stats">
+                    <div class="stat-item">
+                        <div class="stat-value">4</div>
+                        <div class="stat-label">Active Prescriptions</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">1</div>
+                        <div class="stat-label">Needs Refill</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value">2</div>
+                        <div class="stat-label">Ready for Pickup</div>
+                    </div>
+                </div>
+
+                <div class="prescriptions-list">
+                    <div class="prescription-card active needs-refill">
+                        <div class="prescription-header">
+                            <div class="medication-name">Metformin 500mg</div>
+                            <div class="prescription-status needs-refill">
+                                <i class="fas fa-exclamation-triangle"></i>Needs Refill
+                            </div>
+                        </div>
+                        <div class="prescription-details">
+                            <div class="detail-item">
+                                <label>Prescribed by:</label>
+                                <span>Dr. Sarah Smith</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Dosage:</label>
+                                <span>Take 1 tablet twice daily with meals</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Refills remaining:</label>
+                                <span>0 of 5</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Last filled:</label>
+                                <span>December 15, 2023</span>
+                            </div>
+                        </div>
+                        <div class="prescription-actions">
+                            <button class="btn-primary">
+                                <i class="fas fa-redo"></i>Request Refill
+                            </button>
+                            <button class="btn-outline">
+                                <i class="fas fa-comment"></i>Message Provider
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="prescription-card active">
+                        <div class="prescription-header">
+                            <div class="medication-name">Lisinopril 10mg</div>
+                            <div class="prescription-status active">
+                                <i class="fas fa-check-circle"></i>Active
+                            </div>
+                        </div>
+                        <div class="prescription-details">
+                            <div class="detail-item">
+                                <label>Prescribed by:</label>
+                                <span>Dr. Sarah Smith</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Dosage:</label>
+                                <span>Take 1 tablet once daily</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Refills remaining:</label>
+                                <span>3 of 5</span>
+                            </div>
+                            <div class="detail-item">
+                                <label>Last filled:</label>
+                                <span>January 5, 2024</span>
+                            </div>
+                        </div>
+                        <div class="prescription-actions">
+                            <button class="btn-secondary">
+                                <i class="fas fa-redo"></i>Refill
+                            </button>
+                            <button class="btn-outline">
+                                <i class="fas fa-info-circle"></i>Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Notification Panel -->
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <h3>Notifications</h3>
+            <button class="close-notifications" onclick="toggleNotifications()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="notification-list">
+            <div class="notification-item unread">
+                <div class="notification-icon appointment">
+                    <i class="fas fa-calendar-check"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">Appointment Confirmed</div>
+                    <div class="notification-message">Your appointment with Dr. Smith has been confirmed for January 15th at 10:00 AM</div>
+                    <div class="notification-time">2 hours ago</div>
+                </div>
+            </div>
+            <div class="notification-item unread">
+                <div class="notification-icon result">
+                    <i class="fas fa-vial"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">Lab Results Available</div>
+                    <div class="notification-message">Your blood test results are now available for viewing</div>
+                    <div class="notification-time">1 day ago</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../assets/js/dashboard.js"></script>
+    <script src="../assets/js/patient-dashboard.js"></script>
+</body>
+</html>
