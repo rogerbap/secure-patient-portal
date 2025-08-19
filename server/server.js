@@ -1,4 +1,3 @@
-//server/server.js
 require('dotenv').config();
 
 // Import core modules

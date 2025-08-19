@@ -1,13 +1,9 @@
-//server/controllers/authController.js
 /**
  * Authentication Controller
  * 
  * Handles user authentication, registration, and session management.
  * Implements comprehensive security measures including risk assessment,
  * audit logging, and secure token management for healthcare applications.
- * 
- * @author Your Name
- * @version 1.0.0
  */
 
 const bcrypt = require('bcryptjs');

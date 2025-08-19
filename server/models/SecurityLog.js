@@ -1,4 +1,3 @@
-//server/models/SecurityLog.js
 /**
  * Security Log Model
  * 

@@ -1,4 +1,3 @@
-//server/services/authService.js
 /**
  * Authentication Service
  * 

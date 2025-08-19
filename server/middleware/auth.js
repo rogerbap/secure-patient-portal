@@ -1,4 +1,3 @@
-//server/middleware/auth.js
 /**
  * Authentication Middleware
  * 
