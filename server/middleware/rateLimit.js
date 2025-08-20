@@ -1,6 +1,8 @@
+//server/middleware/rateLimit.js
 /**
  * Rate Limiting Middleware
  * 
+ * Updated to use latest express-rate-limit API
  * Implements comprehensive rate limiting to prevent brute force attacks,
  * API abuse, and ensure fair usage of the healthcare portal resources.
  */
@@ -17,23 +19,27 @@ const auditService = require('../services/auditService');
 const createRateLimitHandler = (limitType) => {
   return async (req, res) => {
     // Log rate limit exceeded event
-    await auditService.logSecurityEvent({
-      eventType: 'RATE_LIMIT_EXCEEDED',
-      severity: 'medium',
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-      endpoint: req.originalUrl,
-      details: {
-        limitType,
-        method: req.method,
-        rateLimitInfo: {
-          limit: req.rateLimit?.limit,
-          current: req.rateLimit?.current,
-          remaining: req.rateLimit?.remaining,
-          resetTime: req.rateLimit?.resetTime
+    try {
+      await auditService.logSecurityEvent({
+        eventType: 'RATE_LIMIT_EXCEEDED',
+        severity: 'medium',
+        ipAddress: req.ip,
+        userAgent: req.get('User-Agent'),
+        endpoint: req.originalUrl,
+        details: {
+          limitType,
+          method: req.method,
+          rateLimitInfo: {
+            limit: req.rateLimit?.limit,
+            current: req.rateLimit?.current,
+            remaining: req.rateLimit?.remaining,
+            resetTime: req.rateLimit?.resetTime
+          }
         }
-      }
-    });
+      });
+    } catch (error) {
+      logger.error('Failed to log rate limit event:', error);
+    }
 
     logger.warn('Rate limit exceeded:', {
       ip: req.ip,
@@ -53,33 +59,17 @@ const createRateLimitHandler = (limitType) => {
 };
 
 /**
- * Create custom skip function for authenticated users
- * @param {number} multiplier - Rate limit multiplier for authenticated users
- * @returns {Function} Skip function
- */
-const createAuthenticatedSkip = (multiplier = 5) => {
-  return (req) => {
-    // Authenticated users get higher limits
-    if (req.user) {
-      const originalLimit = req.rateLimit?.limit || 100;
-      req.rateLimit = {
-        ...req.rateLimit,
-        limit: originalLimit * multiplier
-      };
-      return false; // Don't skip, but apply higher limit
-    }
-    return false;
-  };
-};
-
-/**
  * Global API rate limiting
  * Applies to all /api/* endpoints
  */
 const globalRateLimit = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
   max: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS) || 100, // 100 requests per window
-  message: 'Too many requests from this IP, please try again later.',
+  message: {
+    error: 'Too many requests',
+    message: 'Too many requests from this IP, please try again later.',
+    retryAfter: 900 // 15 minutes in seconds
+  },
   standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
   legacyHeaders: false, // Disable the `X-RateLimit-*` headers
   
@@ -98,16 +88,6 @@ const globalRateLimit = rateLimit({
       return false;
     }
     return false;
-  },
-  
-  // Store rate limit info in request object
-  onLimitReached: (req, res, options) => {
-    logger.warn('Global rate limit reached:', {
-      ip: req.ip,
-      endpoint: req.originalUrl,
-      limit: options.max,
-      windowMs: options.windowMs
-    });
   }
 });
 
@@ -118,7 +98,11 @@ const globalRateLimit = rateLimit({
 const authRateLimit = rateLimit({
   windowMs: parseInt(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
   max: parseInt(process.env.AUTH_RATE_LIMIT_MAX_REQUESTS) || 5, // 5 attempts per window
-  message: 'Too many authentication attempts, please try again later.',
+  message: {
+    error: 'Too many authentication attempts',
+    message: 'Too many authentication attempts, please try again later.',
+    retryAfter: 900
+  },
   standardHeaders: true,
   legacyHeaders: false,
   
@@ -131,30 +115,7 @@ const authRateLimit = rateLimit({
   handler: createRateLimitHandler('authentication'),
   
   // Always apply to auth endpoints regardless of authentication status
-  skip: () => false,
-  
-  onLimitReached: async (req, res, options) => {
-    logger.warn('Authentication rate limit reached:', {
-      ip: req.ip,
-      email: req.body?.email,
-      endpoint: req.originalUrl,
-      limit: options.max
-    });
-
-    // Log potential brute force attack
-    await auditService.logSecurityEvent({
-      eventType: 'POTENTIAL_BRUTE_FORCE',
-      severity: 'high',
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-      endpoint: req.originalUrl,
-      details: {
-        email: req.body?.email,
-        attemptCount: options.max,
-        windowMs: options.windowMs
-      }
-    });
-  }
+  skip: () => false
 });
 
 /**
@@ -164,7 +125,11 @@ const authRateLimit = rateLimit({
 const passwordResetRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 3, // 3 password reset attempts per hour per IP
-  message: 'Too many password reset attempts, please try again later.',
+  message: {
+    error: 'Too many password reset attempts',
+    message: 'Too many password reset attempts, please try again later.',
+    retryAfter: 3600
+  },
   standardHeaders: true,
   legacyHeaders: false,
   
@@ -173,20 +138,7 @@ const passwordResetRateLimit = rateLimit({
     return `pwd-reset-${req.ip}-${email}`;
   },
   
-  handler: createRateLimitHandler('password_reset'),
-  
-  onLimitReached: async (req, res, options) => {
-    await auditService.logSecurityEvent({
-      eventType: 'PASSWORD_RESET_ABUSE',
-      severity: 'medium',
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-      details: {
-        email: req.body?.email,
-        attemptCount: options.max
-      }
-    });
-  }
+  handler: createRateLimitHandler('password_reset')
 });
 
 /**
@@ -196,7 +148,11 @@ const passwordResetRateLimit = rateLimit({
 const apiKeyRateLimit = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 1000, // 1000 requests per window for API keys
-  message: 'API key rate limit exceeded.',
+  message: {
+    error: 'API key rate limit exceeded',
+    message: 'API key rate limit exceeded.',
+    retryAfter: 900
+  },
   standardHeaders: true,
   legacyHeaders: false,
   
@@ -220,7 +176,11 @@ const apiKeyRateLimit = rateLimit({
 const uploadRateLimit = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 20, // 20 uploads per hour
-  message: 'Too many file uploads, please try again later.',
+  message: {
+    error: 'Too many file uploads',
+    message: 'Too many file uploads, please try again later.',
+    retryAfter: 3600
+  },
   standardHeaders: true,
   legacyHeaders: false,
   
@@ -228,21 +188,7 @@ const uploadRateLimit = rateLimit({
     return req.user ? `upload-${req.user.id}` : `upload-${req.ip}`;
   },
   
-  handler: createRateLimitHandler('file_upload'),
-  
-  onLimitReached: async (req, res, options) => {
-    await auditService.logSecurityEvent({
-      eventType: 'UPLOAD_RATE_LIMIT_EXCEEDED',
-      severity: 'medium',
-      userId: req.user?.id,
-      ipAddress: req.ip,
-      userAgent: req.get('User-Agent'),
-      details: {
-        attemptCount: options.max,
-        windowMs: options.windowMs
-      }
-    });
-  }
+  handler: createRateLimitHandler('file_upload')
 });
 
 /**
@@ -252,7 +198,11 @@ const uploadRateLimit = rateLimit({
 const searchRateLimit = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   max: 30, // 30 searches per minute
-  message: 'Too many search requests, please slow down.',
+  message: {
+    error: 'Too many search requests',
+    message: 'Too many search requests, please slow down.',
+    retryAfter: 60
+  },
   standardHeaders: true,
   legacyHeaders: false,
   
@@ -317,12 +267,12 @@ class ProgressiveRateLimit {
         }
       }
       
-      // Store original handler to wrap it
-      const originalHandler = res.status(429).json;
+      // Store original end method to wrap it
+      const originalEnd = res.end;
       
-      // Wrap the 429 response to add violation tracking
-      res.status = function(statusCode) {
-        if (statusCode === 429) {
+      // Wrap the response end to add violation tracking
+      res.end = function(...args) {
+        if (res.statusCode === 429) {
           const cooldown = penaltyMultiplier * 60 * 1000; // Minutes in milliseconds
           recentViolations.push({
             timestamp: now,
@@ -338,7 +288,7 @@ class ProgressiveRateLimit {
           });
         }
         
-        return originalHandler.apply(this, arguments);
+        return originalEnd.apply(this, args);
       };
       
       next();

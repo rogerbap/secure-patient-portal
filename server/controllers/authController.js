@@ -1,3 +1,4 @@
+//server/controllers/authController.js
 /**
  * Authentication Controller
  * 

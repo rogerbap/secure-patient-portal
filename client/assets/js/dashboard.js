@@ -1,3 +1,4 @@
+//client/assets/js/dashboard.js
 /**
  * HealthSecure Portal - Dashboard JavaScript
  * Handles dashboard functionality, navigation, and user interactions
@@ -11,7 +12,7 @@ class DashboardManager {
         this.sessionWarningShown = false;
         this.notificationPanel = false;
         this.userDropdown = false;
-        
+
         this.init();
     }
 
@@ -20,7 +21,7 @@ class DashboardManager {
      */
     init() {
         console.log('🏥 Dashboard Manager - Initializing...');
-        
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.onDOMReady());
         } else {
@@ -37,7 +38,7 @@ class DashboardManager {
         this.startSessionTimer();
         this.animateCounters();
         this.checkAuthentication();
-        
+
         console.log('✅ Dashboard Manager - Ready');
     }
 
@@ -92,14 +93,14 @@ class DashboardManager {
      */
     handleNavigation(event) {
         event.preventDefault();
-        
+
         const link = event.currentTarget;
         const section = link.dataset.section;
-        
+
         if (section) {
             this.showSection(section);
             this.updateActiveNavigation(link);
-            
+
             // Log navigation for analytics
             console.log(`📊 Navigation: ${this.currentSection} → ${section}`);
         }
@@ -113,13 +114,13 @@ class DashboardManager {
         document.querySelectorAll('.dashboard-section').forEach(section => {
             section.classList.remove('active');
         });
-        
+
         // Show target section
         const targetSection = document.getElementById(sectionName);
         if (targetSection) {
             targetSection.classList.add('active');
             this.currentSection = sectionName;
-            
+
             // Load section-specific data
             this.loadSectionData(sectionName);
         }
@@ -132,7 +133,7 @@ class DashboardManager {
         document.querySelectorAll('.nav-link').forEach(link => {
             link.classList.remove('active');
         });
-        
+
         activeLink.classList.add('active');
     }
 
@@ -175,7 +176,7 @@ class DashboardManager {
             // For demo, we'll use static data
             // In production, this would make API calls
             const response = await this.makeAuthenticatedRequest(`/api/dashboard/${userInfo.role}`);
-            
+
             if (response && response.success) {
                 this.updateOverviewUI(response.data);
             }
@@ -224,7 +225,7 @@ class DashboardManager {
      */
     updateStatCounters(summary) {
         const statCards = document.querySelectorAll('.stat-number');
-        
+
         statCards.forEach(card => {
             const target = parseInt(card.dataset.target) || 0;
             this.animateCounter(card, target);
@@ -252,7 +253,7 @@ class DashboardManager {
      */
     animateCounters() {
         const counters = document.querySelectorAll('.stat-number');
-        
+
         counters.forEach(counter => {
             const target = parseInt(counter.dataset.target) || 0;
             setTimeout(() => {
@@ -267,7 +268,7 @@ class DashboardManager {
     async loadUserData() {
         try {
             const userInfo = this.getUserInfo();
-            
+
             if (userInfo) {
                 this.updateUserUI(userInfo);
             } else {
@@ -314,31 +315,249 @@ class DashboardManager {
      * Check authentication status
      */
     async checkAuthentication() {
-        try {
-            const token = sessionStorage.getItem('authToken');
+    try {
+        console.log('🔍 Starting authentication check...');
+        
+        // Step 1: Check URL parameters first (from login redirect)
+        const urlParams = new URLSearchParams(window.location.search);
+        const loginSuccess = urlParams.get('login');
+        const userRole = urlParams.get('role');
+        
+        if (loginSuccess === 'success' && userRole) {
+            console.log('✅ Found login success parameters, creating session...');
+            this.createSessionFromURL(userRole);
             
-            if (!token) {
-                this.redirectToLogin();
-                return;
-            }
-
-            // Verify token with server
-            const response = await this.makeAuthenticatedRequest('/api/auth/verify-token');
+            // Clean up URL without page reload
+            const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+            window.history.replaceState({path: newUrl}, '', newUrl);
             
-            if (!response || !response.success) {
-                this.redirectToLogin();
+            console.log('✅ Authentication successful from URL parameters');
+            return; // Exit early - authentication successful
+        }
+        
+        // Step 2: Check existing session storage
+        let userInfo = this.getUserInfo();
+        let authToken = sessionStorage.getItem('authToken');
+        
+        console.log('🔍 Checking existing session...', { 
+            hasUserInfo: !!userInfo, 
+            hasAuthToken: !!authToken,
+            userEmail: userInfo?.email 
+        });
+        
+        if (userInfo && userInfo.email && authToken) {
+            console.log('✅ Valid existing session found');
+            return; // Exit early - authentication successful
+        }
+        
+        // Step 3: Check if we have a demo token but missing user info
+        if (authToken && authToken.startsWith('demo-token-')) {
+            console.log('✅ Demo token found, recreating user session...');
+            const userType = this.extractUserTypeFromToken(authToken);
+            if (userType) {
+                this.createSessionFromToken(userType);
+                console.log('✅ Session recreated from token');
+                return; // Exit early - authentication successful
             }
-        } catch (error) {
-            console.warn('Authentication check failed, using demo mode');
+        }
+        
+        // Step 4: Development mode fallback - create demo session
+        if (this.isDevelopmentMode()) {
+            console.log('🔧 Development mode - creating demo patient session...');
+            this.createDemoSession('patient');
+            console.log('✅ Demo session created');
+            return; // Exit early - authentication successful
+        }
+        
+        // Step 5: No valid authentication found
+        console.log('❌ No valid authentication found');
+        this.redirectToLogin();
+        
+    } catch (error) {
+        console.error('❌ Authentication check failed:', error);
+        
+        // Emergency fallback for development
+        if (this.isDevelopmentMode()) {
+            console.log('🚨 Emergency fallback - creating demo session');
+            this.createDemoSession('patient');
+        } else {
+            this.redirectToLogin();
         }
     }
+}
+
+/**
+ * Create session from URL parameters
+ */
+createSessionFromURL(userRole) {
+    const userInfo = {
+        id: userRole,
+        email: `${userRole}@demo.com`,
+        role: userRole,
+        firstName: userRole.charAt(0).toUpperCase() + userRole.slice(1),
+        lastName: 'User'
+    };
+    
+    const authToken = `demo-token-${userRole}-${Date.now()}`;
+    
+    const loginData = {
+        user: userInfo,
+        riskAssessment: {
+            riskScore: this.getRiskScoreForRole(userRole),
+            riskLevel: this.getRiskLevelForRole(userRole)
+        },
+        timestamp: new Date().toISOString()
+    };
+    
+    // Store all session data
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo));
+    sessionStorage.setItem('authToken', authToken);
+    sessionStorage.setItem('loginData', JSON.stringify(loginData));
+    
+    console.log(`✅ Session created for ${userRole} from URL parameters`);
+}
+
+/**
+ * Create session from existing token
+ */
+createSessionFromToken(userType) {
+    const userInfo = {
+        id: userType,
+        email: `${userType}@demo.com`,
+        role: userType,
+        firstName: userType.charAt(0).toUpperCase() + userType.slice(1),
+        lastName: 'User'
+    };
+    
+    const loginData = {
+        user: userInfo,
+        riskAssessment: {
+            riskScore: this.getRiskScoreForRole(userType),
+            riskLevel: this.getRiskLevelForRole(userType)
+        },
+        timestamp: new Date().toISOString()
+    };
+    
+    // Store missing session data
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo));
+    sessionStorage.setItem('loginData', JSON.stringify(loginData));
+    
+    console.log(`✅ Session recreated for ${userType} from existing token`);
+}
+
+/**
+ * Create demo session for development
+ */
+createDemoSession(userType = 'patient') {
+    const userInfo = {
+        id: userType,
+        email: `${userType}@demo.com`,
+        role: userType,
+        firstName: userType === 'patient' ? 'Demo' : userType.charAt(0).toUpperCase() + userType.slice(1),
+        lastName: userType === 'patient' ? 'Patient' : 'User'
+    };
+    
+    const authToken = `demo-token-${userType}-${Date.now()}`;
+    
+    const loginData = {
+        user: userInfo,
+        riskAssessment: {
+            riskScore: this.getRiskScoreForRole(userType),
+            riskLevel: this.getRiskLevelForRole(userType)
+        },
+        timestamp: new Date().toISOString()
+    };
+    
+    // Store all session data
+    sessionStorage.setItem('userInfo', JSON.stringify(userInfo));
+    sessionStorage.setItem('authToken', authToken);
+    sessionStorage.setItem('loginData', JSON.stringify(loginData));
+    
+    console.log(`✅ Demo session created for ${userType}`);
+}
+
+/**
+ * Extract user type from demo token
+ */
+extractUserTypeFromToken(token) {
+    try {
+        const parts = token.split('-');
+        return parts.length >= 3 ? parts[2] : null;
+    } catch (error) {
+        console.error('Failed to extract user type from token:', error);
+        return null;
+    }
+}
+
+/**
+ * Check if we're in development mode
+ */
+isDevelopmentMode() {
+    return window.location.hostname === 'localhost' || 
+           window.location.hostname === '127.0.0.1' ||
+           window.location.hostname === '0.0.0.0' ||
+           window.location.port === '8080';
+}
+
+/**
+ * Get risk score for user role
+ */
+getRiskScoreForRole(role) {
+    const riskScores = {
+        patient: 25,
+        provider: 15,
+        admin: 35,
+        suspicious: 85
+    };
+    return riskScores[role] || 25;
+}
+
+/**
+ * Get risk level for user role
+ */
+getRiskLevelForRole(role) {
+    const riskScore = this.getRiskScoreForRole(role);
+    if (riskScore < 30) return 'LOW';
+    if (riskScore < 60) return 'MEDIUM';
+    return 'HIGH';
+}
+
+/**
+ * Enhanced getUserInfo method
+ */
+getUserInfo() {
+    try {
+        // Try userInfo first
+        const userInfo = sessionStorage.getItem('userInfo');
+        if (userInfo) {
+            const parsed = JSON.parse(userInfo);
+            if (parsed && parsed.email) {
+                return parsed;
+            }
+        }
+        
+        // Try loginData as fallback
+        const loginData = sessionStorage.getItem('loginData');
+        if (loginData) {
+            const parsed = JSON.parse(loginData);
+            if (parsed && parsed.user && parsed.user.email) {
+                return parsed.user;
+            }
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('Error parsing user info:', error);
+        return null;
+    }
+}
 
     /**
      * Make authenticated API request
      */
     async makeAuthenticatedRequest(endpoint) {
         const token = sessionStorage.getItem('authToken');
-        
+
         const response = await fetch(`${this.apiBaseUrl}${endpoint}`, {
             headers: {
                 'Authorization': `Bearer ${token}`,
@@ -361,7 +580,7 @@ class DashboardManager {
         // 30 minutes session timeout
         const timeoutDuration = 30 * 60 * 1000;
         const warningTime = 5 * 60 * 1000; // 5 minutes warning
-        
+
         // Clear existing timer
         if (this.sessionTimeout) {
             clearTimeout(this.sessionTimeout);
@@ -392,7 +611,7 @@ class DashboardManager {
 
         const updateDisplay = () => {
             remainingTime -= 1000;
-            
+
             if (remainingTime <= 0) {
                 timerEl.textContent = 'Session expired';
                 return;
@@ -400,7 +619,7 @@ class DashboardManager {
 
             const hours = Math.floor(remainingTime / (1000 * 60 * 60));
             const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
-            
+
             timerEl.textContent = `Session: ${hours}h ${minutes}m remaining`;
         };
 
@@ -418,11 +637,11 @@ class DashboardManager {
      */
     showSessionWarning() {
         this.sessionWarningShown = true;
-        
+
         const confirmed = confirm(
             'Your session will expire in 5 minutes. Would you like to extend your session?'
         );
-        
+
         if (confirmed) {
             this.extendSession();
         }
@@ -434,17 +653,17 @@ class DashboardManager {
     async extendSession() {
         try {
             const response = await this.makeAuthenticatedRequest('/api/auth/refresh');
-            
+
             if (response && response.success) {
                 // Update token if provided
                 if (response.accessToken) {
                     sessionStorage.setItem('authToken', response.accessToken);
                 }
-                
+
                 // Restart session timer
                 this.sessionWarningShown = false;
                 this.startSessionTimer();
-                
+
                 this.showNotification('Session extended successfully', 'success');
             }
         } catch (error) {
@@ -466,10 +685,10 @@ class DashboardManager {
      */
     toggleUserMenu() {
         const dropdown = document.getElementById('userDropdown');
-        
+
         if (dropdown) {
             this.userDropdown = !this.userDropdown;
-            
+
             if (this.userDropdown) {
                 dropdown.classList.add('show');
                 this.notificationPanel = false;
@@ -485,10 +704,10 @@ class DashboardManager {
      */
     toggleNotifications() {
         const panel = document.getElementById('notificationPanel');
-        
+
         if (panel) {
             this.notificationPanel = !this.notificationPanel;
-            
+
             if (this.notificationPanel) {
                 panel.classList.add('show');
                 this.userDropdown = false;
@@ -536,7 +755,7 @@ class DashboardManager {
     async loadNotifications() {
         try {
             const response = await this.makeAuthenticatedRequest('/api/dashboard/notifications');
-            
+
             if (response && response.success) {
                 this.updateNotificationsUI(response.data.notifications);
             }
@@ -647,7 +866,7 @@ class DashboardManager {
             if (section) {
                 event.preventDefault();
                 this.showSection(section);
-                
+
                 // Update navigation
                 const navLink = document.querySelector(`[data-section="${section}"]`);
                 if (navLink) {
@@ -679,7 +898,7 @@ class DashboardManager {
      */
     handleBeforeUnload() {
         console.log('🔄 Dashboard unloading - Cleaning up');
-        
+
         if (this.sessionTimeout) {
             clearTimeout(this.sessionTimeout);
         }
@@ -694,9 +913,9 @@ class DashboardManager {
         notification.className = `notification-toast ${type}`;
         notification.innerHTML = `
             <div class="notification-content">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 
-                                  type === 'error' ? 'exclamation-circle' : 
-                                  'info-circle'}"></i>
+                <i class="fas fa-${type === 'success' ? 'check-circle' :
+                type === 'error' ? 'exclamation-circle' :
+                    'info-circle'}"></i>
                 <span>${message}</span>
             </div>
             <button class="close-notification">
@@ -754,12 +973,12 @@ class DashboardManager {
             // Clear session data
             sessionStorage.removeItem('authToken');
             sessionStorage.removeItem('userInfo');
-            
+
             // Clear timers
             if (this.sessionTimeout) {
                 clearTimeout(this.sessionTimeout);
             }
-            
+
             // Redirect to login
             this.redirectToLogin();
         }
@@ -770,7 +989,14 @@ class DashboardManager {
      */
     redirectToLogin() {
         console.log('🔄 Redirecting to login...');
-        window.location.href = '/login.html';
+
+        // Clear any existing session data
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('userInfo');
+        sessionStorage.removeItem('loginData');
+
+        // Redirect to root (which serves index.html - your login page)
+        window.location.href = '/';
     }
 
     /**
@@ -801,7 +1027,7 @@ class DashboardManager {
 function navigateToSection(sectionName) {
     if (window.dashboardManager) {
         window.dashboardManager.showSection(sectionName);
-        
+
         // Update navigation
         const navLink = document.querySelector(`[data-section="${sectionName}"]`);
         if (navLink) {

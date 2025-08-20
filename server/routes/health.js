@@ -1,3 +1,4 @@
+//server/routes/health.js
 /**
  * Health Check Routes
  * 

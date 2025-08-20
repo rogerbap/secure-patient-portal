@@ -1,6 +1,8 @@
+//client/assets/js/login.js
 /**
  * HealthSecure Portal - Login Page JavaScript
  * Handles authentication, security monitoring, and user interactions
+ * FIXED VERSION: Enhanced dashboard navigation and user data storage
  */
 
 class LoginManager {
@@ -81,6 +83,16 @@ class LoginManager {
         if (demoModeToggle) {
             demoModeToggle.addEventListener('change', (e) => this.toggleDemoMode(e.target.checked));
         }
+
+        // Demo account buttons
+        document.querySelectorAll('.account-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const userType = btn.dataset.user;
+                if (userType) {
+                    this.selectDemoAccount(userType, btn);
+                }
+            });
+        });
 
         // Form validation
         const emailInput = document.getElementById('email');
@@ -314,9 +326,14 @@ class LoginManager {
      */
     async checkApiConnection() {
         try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000);
+
             const response = await fetch(`${this.apiBaseUrl}/api/health`, {
-                timeout: 5000
+                signal: controller.signal
             });
+            
+            clearTimeout(timeoutId);
             const data = await response.json();
             
             if (data.status === 'healthy') {
@@ -384,7 +401,7 @@ class LoginManager {
     }
 
     /**
-     * Handle demo mode login
+     * Handle demo mode login - ENHANCED VERSION
      */
     async handleDemoLogin(email, password) {
         // Simulate authentication delay
@@ -404,7 +421,31 @@ class LoginManager {
             this.updateRiskDisplay(user.riskScore, user.riskLevel);
             this.updateSecurityActions(user.riskScore);
             
-            // Simulate redirect after delay
+            // Store comprehensive user info for dashboard
+            const userInfo = {
+                id: userType,
+                email: email,
+                role: userType,
+                firstName: userType.charAt(0).toUpperCase() + userType.slice(1),
+                lastName: 'User'
+            };
+
+            sessionStorage.setItem('userInfo', JSON.stringify(userInfo));
+            
+            // Also store a demo token for authentication
+            sessionStorage.setItem('authToken', 'demo-token-' + userType + '-' + Date.now());
+            
+            // Store complete login data as backup
+            sessionStorage.setItem('loginData', JSON.stringify({
+                user: userInfo,
+                riskAssessment: {
+                    riskScore: user.riskScore,
+                    riskLevel: user.riskLevel
+                },
+                timestamp: new Date().toISOString()
+            }));
+            
+            // Redirect to dashboard after delay
             setTimeout(() => {
                 this.redirectToDashboard(userType);
             }, 2000);
@@ -416,7 +457,7 @@ class LoginManager {
     }
 
     /**
-     * Handle production mode login
+     * Handle production mode login - ENHANCED VERSION
      */
     async handleProductionLogin(email, password) {
         if (!this.isConnected) {
@@ -424,45 +465,57 @@ class LoginManager {
             return;
         }
 
-        const response = await fetch(`${this.apiBaseUrl}/api/auth/login`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-        });
+        try {
+            const response = await fetch(`${this.apiBaseUrl}/api/auth/login`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ email, password })
+            });
 
-        const data = await response.json();
+            const data = await response.json();
 
-        if (data.success) {
-            // Store authentication data
-            if (data.accessToken) {
-                sessionStorage.setItem('authToken', data.accessToken);
+            if (data.success) {
+                // Store authentication data
+                if (data.accessToken) {
+                    sessionStorage.setItem('authToken', data.accessToken);
+                }
+                
+                if (data.user) {
+                    sessionStorage.setItem('userInfo', JSON.stringify(data.user));
+                    
+                    // Store complete login data as backup
+                    sessionStorage.setItem('loginData', JSON.stringify({
+                        user: data.user,
+                        riskAssessment: data.riskAssessment,
+                        timestamp: new Date().toISOString()
+                    }));
+                }
+
+                this.showLoginResult(
+                    `✅ Welcome ${data.user?.firstName || 'User'}! Risk Score: ${data.riskAssessment?.riskScore || 'N/A'}/100`,
+                    'success'
+                );
+
+                // Update security display with real data
+                if (data.riskAssessment) {
+                    this.updateRiskDisplay(data.riskAssessment.riskScore, data.riskAssessment.riskLevel);
+                    this.updateSecurityActions(data.riskAssessment.riskScore);
+                }
+
+                // Redirect to dashboard
+                setTimeout(() => {
+                    this.redirectToDashboard(data.user?.role || 'patient');
+                }, 2000);
+
+                console.log('✅ Production login successful');
+            } else {
+                this.showLoginResult(`❌ ${data.message || 'Login failed'}`, 'error');
             }
-            
-            if (data.user) {
-                sessionStorage.setItem('userInfo', JSON.stringify(data.user));
-            }
-
-            this.showLoginResult(
-                `✅ Welcome ${data.user?.firstName || 'User'}! Risk Score: ${data.riskAssessment?.riskScore || 'N/A'}/100`,
-                'success'
-            );
-
-            // Update security display with real data
-            if (data.riskAssessment) {
-                this.updateRiskDisplay(data.riskAssessment.riskScore, data.riskAssessment.riskLevel);
-                this.updateSecurityActions(data.riskAssessment.riskScore);
-            }
-
-            // Redirect to dashboard
-            setTimeout(() => {
-                this.redirectToDashboard(data.user?.role || 'patient');
-            }, 2000);
-
-            console.log('✅ Production login successful');
-        } else {
-            this.showLoginResult(`❌ ${data.message || 'Login failed'}`, 'error');
+        } catch (error) {
+            console.error('Production login error:', error);
+            this.showLoginResult('❌ Server error. Please try again.', 'error');
         }
     }
 
@@ -479,12 +532,12 @@ class LoginManager {
             
             if (loading) {
                 loginBtn.classList.add('loading');
-                btnText?.classList.add('hidden');
-                btnLoader?.classList.remove('hidden');
+                if (btnText) btnText.style.opacity = '0';
+                if (btnLoader) btnLoader.style.opacity = '1';
             } else {
                 loginBtn.classList.remove('loading');
-                btnText?.classList.remove('hidden');
-                btnLoader?.classList.add('hidden');
+                if (btnText) btnText.style.opacity = '1';
+                if (btnLoader) btnLoader.style.opacity = '0';
             }
         }
     }
@@ -619,25 +672,40 @@ class LoginManager {
     }
 
     /**
-     * Redirect to appropriate dashboard
+     * Redirect to appropriate dashboard - FIXED VERSION
      */
     redirectToDashboard(role) {
-        const dashboardUrls = {
-            patient: 'dashboard/patient.html',
-            provider: 'dashboard/provider.html',
-            admin: 'dashboard/admin.html'
-        };
-        
-        const url = dashboardUrls[role] || dashboardUrls.patient;
-        console.log(`🔄 Redirecting to ${role} dashboard: ${url}`);
-        
-        // In a real application, this would redirect
-        // window.location.href = url;
-        
-        // For demo, show success message
-        this.showLoginResult(`🎉 Redirecting to ${role} dashboard...`, 'success');
+    console.log(`🔄 Redirecting to ${role} dashboard...`);
+    
+    // Map roles to dashboard URLs
+    const dashboardUrls = {
+        patient: '/dashboard/patient.html',
+        provider: '/dashboard/provider.html', 
+        admin: '/dashboard/admin.html'
+    };
+    
+    // Default to patient dashboard if role not found
+    let url = dashboardUrls[role] || dashboardUrls.patient;
+    
+    // For demo purposes, all roles use patient dashboard
+    if (this.isDemoMode) {
+        url = '/dashboard/patient.html';
     }
-
+    
+    // Add success parameters to help dashboard authenticate
+    url += `?login=success&role=${role}&timestamp=${Date.now()}`;
+    
+    try {
+        // Add a small delay to show the success message
+        setTimeout(() => {
+            window.location.href = url;
+        }, 500);
+    } catch (error) {
+        console.error('Navigation failed:', error);
+        // Fallback - show success message and manual navigation
+        this.showLoginResult(`🎉 Login successful! Please click <a href="${url}">here</a> to continue to dashboard.`, 'success');
+    }
+}
     /**
      * Utility method to simulate async delays
      */
