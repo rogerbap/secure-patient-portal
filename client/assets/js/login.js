@@ -1,8 +1,7 @@
-//client/assets/js/login.js
+//client/assets/js/login.js - FIXED VERSION WITH ENHANCED DASHBOARD ROUTING
 /**
  * HealthSecure Portal - Login Page JavaScript
- * Handles authentication, security monitoring, and user interactions
- * FIXED VERSION: Enhanced dashboard navigation and user data storage
+ * FIXED: Enhanced dashboard navigation with proper authentication handling
  */
 
 class LoginManager {
@@ -11,32 +10,38 @@ class LoginManager {
         this.isDemoMode = true;
         this.currentUser = 'patient';
         this.isConnected = false;
-        
+
         // Demo user configurations
+
         this.demoUsers = {
             patient: {
                 email: 'patient@demo.com',
                 riskScore: 25,
                 riskLevel: 'LOW',
-                profile: 'Standard patient with normal access patterns'
+                profile: 'Standard patient with normal access patterns',
+                dashboardUrl: '/dashboard/patient'
             },
             provider: {
                 email: 'doctor@demo.com',
                 riskScore: 15,
                 riskLevel: 'LOW',
-                profile: 'Healthcare provider with trusted network access'
+                profile: 'Healthcare provider with trusted network access',
+                dashboardUrl: '/dashboard/provider'
             },
             admin: {
                 email: 'admin@demo.com',
                 riskScore: 35,
                 riskLevel: 'MEDIUM',
-                profile: 'System administrator with elevated privileges'
+                profile: 'System administrator with elevated privileges',
+                dashboardUrl: '/dashboard/admin'
             },
             suspicious: {
                 email: 'suspicious@demo.com',
                 riskScore: 85,
                 riskLevel: 'HIGH',
-                profile: 'High-risk scenario with multiple security flags'
+                profile: 'High-risk scenario with multiple security flags',
+                dashboardUrl: '/dashboard/patient',
+                role: 'patient'  // ADDED: Explicit role to prevent confusion
             }
         };
 
@@ -48,7 +53,7 @@ class LoginManager {
      */
     init() {
         console.log('🔐 Login Manager - Initializing...');
-        
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.onDOMReady());
         } else {
@@ -64,7 +69,8 @@ class LoginManager {
         this.checkApiConnection();
         this.updateSecurityDisplay();
         this.startSecurityMonitoring();
-        
+        this.updateCurrentTime();
+
         console.log('✅ Login Manager - Ready');
     }
 
@@ -97,12 +103,12 @@ class LoginManager {
         // Form validation
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
-        
+
         if (emailInput) {
             emailInput.addEventListener('input', () => this.validateEmail());
             emailInput.addEventListener('blur', () => this.validateEmail());
         }
-        
+
         if (passwordInput) {
             passwordInput.addEventListener('input', () => this.validatePassword());
         }
@@ -112,6 +118,35 @@ class LoginManager {
 
         // Periodic connection checks
         setInterval(() => this.checkApiConnection(), 30000);
+
+        // Update time every minute
+        setInterval(() => this.updateCurrentTime(), 60000);
+    }
+
+    /**
+     * Update current time display
+     */
+    updateCurrentTime() {
+        const now = new Date();
+        let hours = now.getHours();
+        const minutes = now.getMinutes().toString().padStart(2, '0');
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+
+        const currentTime = `${hours}:${minutes} ${ampm}`;
+
+        const timeElements = document.querySelectorAll('.current-time');
+        timeElements.forEach(el => {
+            el.textContent = currentTime;
+        });
+
+        const statusDetails = document.querySelector('.status-details');
+        if (statusDetails) {
+            const baseText = statusDetails.textContent.split('|')[0];
+            statusDetails.textContent = `${baseText}| Last Login: Today, ${currentTime}`;
+        }
     }
 
     /**
@@ -138,8 +173,7 @@ class LoginManager {
                     break;
             }
         }
-        
-        // Enter key to submit form
+
         if (event.key === 'Enter' && !event.shiftKey) {
             const activeElement = document.activeElement;
             if (activeElement && activeElement.form && activeElement.form.id === 'loginForm') {
@@ -154,24 +188,22 @@ class LoginManager {
      */
     toggleDemoMode(enabled) {
         this.isDemoMode = enabled;
-        
+
         const demoAccounts = document.getElementById('demoAccounts');
         const demoTools = document.getElementById('demoTools');
         const productionInfo = document.getElementById('productionInfo');
-        
+
         if (enabled) {
             demoAccounts?.classList.remove('hidden');
             demoTools?.classList.remove('hidden');
             productionInfo?.classList.add('hidden');
-            
-            // Reset to demo defaults
+
             this.selectDemoAccount('patient');
         } else {
             demoAccounts?.classList.add('hidden');
             demoTools?.classList.add('hidden');
             productionInfo?.classList.remove('hidden');
-            
-            // Clear form for production use
+
             this.clearForm();
         }
 
@@ -187,18 +219,16 @@ class LoginManager {
         this.currentUser = userType;
         const user = this.demoUsers[userType];
 
-        // Update form fields
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
-        
+
         if (emailInput) emailInput.value = user.email;
         if (passwordInput) passwordInput.value = 'SecurePass123!';
 
-        // Update button states
         document.querySelectorAll('.account-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        
+
         if (buttonElement) {
             buttonElement.classList.add('active');
         } else {
@@ -206,9 +236,8 @@ class LoginManager {
             if (btn) btn.classList.add('active');
         }
 
-        // Update security display
         this.updateRiskDisplay(user.riskScore, user.riskLevel);
-        
+
         console.log(`👤 Selected ${userType}: ${user.profile}`);
     }
 
@@ -218,10 +247,10 @@ class LoginManager {
     clearForm() {
         const emailInput = document.getElementById('email');
         const passwordInput = document.getElementById('password');
-        
+
         if (emailInput) emailInput.value = '';
         if (passwordInput) passwordInput.value = '';
-        
+
         this.clearValidation();
     }
 
@@ -231,17 +260,17 @@ class LoginManager {
     validateEmail() {
         const emailInput = document.getElementById('email');
         const validator = document.getElementById('emailValidator');
-        
+
         if (!emailInput || !validator) return;
 
         const email = emailInput.value.trim();
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        
+
         if (!email) {
             this.showValidation(validator, '', '');
             return;
         }
-        
+
         if (emailRegex.test(email)) {
             this.showValidation(validator, '✓ Valid email format', 'success');
         } else {
@@ -255,12 +284,12 @@ class LoginManager {
     validatePassword() {
         const passwordInput = document.getElementById('password');
         const strengthIndicator = document.getElementById('passwordStrength');
-        
+
         if (!passwordInput || !strengthIndicator) return;
 
         const password = passwordInput.value;
         const strength = this.calculatePasswordStrength(password);
-        
+
         this.showPasswordStrength(strengthIndicator, strength);
     }
 
@@ -332,10 +361,10 @@ class LoginManager {
             const response = await fetch(`${this.apiBaseUrl}/api/health`, {
                 signal: controller.signal
             });
-            
+
             clearTimeout(timeoutId);
             const data = await response.json();
-            
+
             if (data.status === 'healthy') {
                 this.isConnected = true;
                 this.updateConnectionStatus('Connected', 'connected');
@@ -356,7 +385,7 @@ class LoginManager {
     updateConnectionStatus(status, type) {
         const statusIcon = document.getElementById('statusIcon');
         const statusText = document.getElementById('statusText');
-        
+
         if (statusIcon && statusText) {
             statusIcon.className = `fas fa-circle ${type}`;
             statusText.textContent = status;
@@ -364,20 +393,19 @@ class LoginManager {
     }
 
     /**
-     * Handle login form submission
+     * Handle login form submission - FIXED VERSION
      */
     async handleLogin(event) {
         event.preventDefault();
-        
+
         const email = document.getElementById('email')?.value?.trim();
         const password = document.getElementById('password')?.value;
-        
+
         if (!email || !password) {
             this.showLoginResult('Please enter both email and password', 'error');
             return;
         }
 
-        // Validate email format
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
             this.showLoginResult('Please enter a valid email address', 'error');
@@ -401,41 +429,41 @@ class LoginManager {
     }
 
     /**
-     * Handle demo mode login - ENHANCED VERSION
+     * Handle demo mode login - ENHANCED WITH BETTER ROUTING
      */
     async handleDemoLogin(email, password) {
-        // Simulate authentication delay
         await this.simulateDelay(1500);
-        
+
         const user = Object.values(this.demoUsers).find(u => u.email === email);
-        
+
         if (user && password === 'SecurePass123!') {
             const userType = Object.keys(this.demoUsers).find(key => this.demoUsers[key] === user);
-            
+
+            // FIXED: For suspicious users, treat them as patients but with high risk
+            const actualRole = user.role || userType;
+            const displayRole = userType;
+
             this.showLoginResult(
-                `✅ Authentication successful! Welcome ${userType}. Risk Level: ${user.riskLevel}`,
-                'success'
+                `✅ Authentication successful! Welcome ${displayRole}. Risk Level: ${user.riskLevel}`,
+                user.riskLevel === 'HIGH' ? 'warning' : 'success'
             );
-            
-            // Update security display
+
             this.updateRiskDisplay(user.riskScore, user.riskLevel);
             this.updateSecurityActions(user.riskScore);
-            
-            // Store comprehensive user info for dashboard
+
+            // Store user info with actual role for routing
             const userInfo = {
                 id: userType,
                 email: email,
-                role: userType,
+                role: actualRole,  // Use 'patient' for suspicious users
                 firstName: userType.charAt(0).toUpperCase() + userType.slice(1),
-                lastName: 'User'
+                lastName: 'User',
+                riskLevel: user.riskLevel,
+                riskScore: user.riskScore
             };
 
             sessionStorage.setItem('userInfo', JSON.stringify(userInfo));
-            
-            // Also store a demo token for authentication
-            sessionStorage.setItem('authToken', 'demo-token-' + userType + '-' + Date.now());
-            
-            // Store complete login data as backup
+            sessionStorage.setItem('authToken', 'demo-token-' + actualRole + '-' + Date.now());
             sessionStorage.setItem('loginData', JSON.stringify({
                 user: userInfo,
                 riskAssessment: {
@@ -444,13 +472,14 @@ class LoginManager {
                 },
                 timestamp: new Date().toISOString()
             }));
-            
-            // Redirect to dashboard after delay
+
+            document.cookie = `demoAuth=${encodeURIComponent(JSON.stringify(userInfo))}; path=/; max-age=86400; SameSite=Strict`;
+
             setTimeout(() => {
-                this.redirectToDashboard(userType);
+                this.navigateToDashboard(actualRole, user.dashboardUrl);
             }, 2000);
-            
-            console.log(`✅ Demo login successful: ${userType}`);
+
+            console.log(`✅ Demo login successful: ${userType} (role: ${actualRole})`);
         } else {
             this.showLoginResult('❌ Invalid credentials for demo account', 'error');
         }
@@ -481,11 +510,9 @@ class LoginManager {
                 if (data.accessToken) {
                     sessionStorage.setItem('authToken', data.accessToken);
                 }
-                
+
                 if (data.user) {
                     sessionStorage.setItem('userInfo', JSON.stringify(data.user));
-                    
-                    // Store complete login data as backup
                     sessionStorage.setItem('loginData', JSON.stringify({
                         user: data.user,
                         riskAssessment: data.riskAssessment,
@@ -498,15 +525,14 @@ class LoginManager {
                     'success'
                 );
 
-                // Update security display with real data
                 if (data.riskAssessment) {
                     this.updateRiskDisplay(data.riskAssessment.riskScore, data.riskAssessment.riskLevel);
                     this.updateSecurityActions(data.riskAssessment.riskScore);
                 }
 
-                // Redirect to dashboard
                 setTimeout(() => {
-                    this.redirectToDashboard(data.user?.role || 'patient');
+                    const dashboardUrl = this.getDashboardUrlForRole(data.user?.role || 'patient');
+                    this.navigateToDashboard(data.user?.role || 'patient', dashboardUrl);
                 }, 2000);
 
                 console.log('✅ Production login successful');
@@ -520,16 +546,65 @@ class LoginManager {
     }
 
     /**
+     * Get dashboard URL for role
+     */
+    getDashboardUrlForRole(role) {
+        const dashboardUrls = {
+            patient: '/dashboard/patient',
+            provider: '/dashboard/provider',
+            admin: '/dashboard/admin'
+        };
+        return dashboardUrls[role] || dashboardUrls.patient;
+    }
+
+    /**
+     * ENHANCED: Navigate to dashboard with better error handling
+     */
+    navigateToDashboard(role, dashboardUrl = null) {
+        console.log(`🔄 Navigating to ${role} dashboard...`);
+
+        // FIXED: Use the backend server URL (port 3000) instead of frontend (port 8080)
+        const backendUrl = this.apiBaseUrl; // http://localhost:3000
+        const url = dashboardUrl || this.getDashboardUrlForRole(role);
+        const fullUrl = `${backendUrl}${url}`;
+
+        try {
+            // Store authentication data for the backend
+            const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
+
+            // Set demo auth cookie for backend server
+            if (userInfo.role) {
+                // Set cookie for the backend domain
+                document.cookie = `demoAuth=${encodeURIComponent(JSON.stringify(userInfo))}; path=/; domain=localhost; max-age=86400; SameSite=Lax`;
+            }
+
+            console.log(`🎯 Navigating to: ${fullUrl}`);
+
+            // Navigate to the backend server
+            window.location.href = fullUrl;
+
+        } catch (error) {
+            console.error('Navigation failed:', error);
+
+            // Fallback: Show manual navigation link
+            this.showLoginResult(
+                `🎉 Login successful! <a href="${fullUrl}" style="color: inherit; text-decoration: underline;" target="_blank">Click here to open your dashboard</a>`,
+                'success'
+            );
+        }
+    }
+
+    /**
      * Set loading state for login form
      */
     setLoadingState(loading) {
         const loginBtn = document.getElementById('loginBtn');
         const btnText = loginBtn?.querySelector('.btn-text');
         const btnLoader = loginBtn?.querySelector('.btn-loader');
-        
+
         if (loginBtn) {
             loginBtn.disabled = loading;
-            
+
             if (loading) {
                 loginBtn.classList.add('loading');
                 if (btnText) btnText.style.opacity = '0';
@@ -555,9 +630,8 @@ class LoginManager {
             </div>
         `;
 
-        // Auto-clear after 8 seconds
         setTimeout(() => {
-            if (resultDiv.innerHTML) {
+            if (resultDiv.innerHTML && !message.includes('successful')) {
                 resultDiv.innerHTML = '';
             }
         }, 8000);
@@ -567,25 +641,23 @@ class LoginManager {
      * Update risk assessment display
      */
     updateRiskDisplay(riskScore, riskLevel) {
-        // Update risk meter
         const riskFill = document.getElementById('riskFill');
         const riskScoreEl = document.getElementById('riskScore');
         const threatBadge = document.querySelector('.threat-badge');
-        
+
         if (riskFill) {
             riskFill.style.width = `${riskScore}%`;
         }
-        
+
         if (riskScoreEl) {
             riskScoreEl.textContent = `${riskScore}/100`;
         }
-        
+
         if (threatBadge) {
             threatBadge.textContent = `${riskLevel} RISK`;
             threatBadge.className = `threat-badge ${riskLevel.toLowerCase()}`;
         }
 
-        // Update security factors
         this.updateSecurityFactors(riskScore);
     }
 
@@ -637,8 +709,6 @@ class LoginManager {
      * Update security actions based on risk score
      */
     updateSecurityActions(riskScore) {
-        // This would typically update a security actions panel
-        // For now, we'll just log the security response
         let action;
         if (riskScore >= 70) {
             action = 'High risk detected - Additional verification required';
@@ -647,7 +717,7 @@ class LoginManager {
         } else {
             action = 'Low risk - Standard security protocols active';
         }
-        
+
         console.log(`🔒 Security Action: ${action}`);
     }
 
@@ -655,10 +725,9 @@ class LoginManager {
      * Start security monitoring
      */
     startSecurityMonitoring() {
-        // Simulate real-time security monitoring
         setInterval(() => {
             this.updateSecurityDisplay();
-        }, 30000); // Update every 30 seconds
+        }, 30000);
     }
 
     /**
@@ -672,41 +741,6 @@ class LoginManager {
     }
 
     /**
-     * Redirect to appropriate dashboard - FIXED VERSION
-     */
-    redirectToDashboard(role) {
-    console.log(`🔄 Redirecting to ${role} dashboard...`);
-    
-    // Map roles to dashboard URLs
-    const dashboardUrls = {
-        patient: '/dashboard/patient.html',
-        provider: '/dashboard/provider.html', 
-        admin: '/dashboard/admin.html'
-    };
-    
-    // Default to patient dashboard if role not found
-    let url = dashboardUrls[role] || dashboardUrls.patient;
-    
-    // For demo purposes, all roles use patient dashboard
-    if (this.isDemoMode) {
-        url = '/dashboard/patient.html';
-    }
-    
-    // Add success parameters to help dashboard authenticate
-    url += `?login=success&role=${role}&timestamp=${Date.now()}`;
-    
-    try {
-        // Add a small delay to show the success message
-        setTimeout(() => {
-            window.location.href = url;
-        }, 500);
-    } catch (error) {
-        console.error('Navigation failed:', error);
-        // Fallback - show success message and manual navigation
-        this.showLoginResult(`🎉 Login successful! Please click <a href="${url}">here</a> to continue to dashboard.`, 'success');
-    }
-}
-    /**
      * Utility method to simulate async delays
      */
     simulateDelay(ms) {
@@ -719,7 +753,7 @@ class LoginManager {
     togglePasswordVisibility() {
         const passwordInput = document.getElementById('password');
         const toggleIcon = document.getElementById('passwordToggleIcon');
-        
+
         if (passwordInput && toggleIcon) {
             const isPassword = passwordInput.type === 'password';
             passwordInput.type = isPassword ? 'text' : 'password';
@@ -773,10 +807,10 @@ function viewSystemHealth() {
 📊 Risk Assessment: Operational
 🛡️ Threat Detection: Monitoring
 
-${window.loginManager.isConnected ? 
-    '✅ All systems operational' : 
-    '⚠️ Backend API offline - Demo mode only'
-}`);
+${window.loginManager.isConnected ?
+                '✅ All systems operational' :
+                '⚠️ Backend API offline - Demo mode only'
+            }`);
     }
 }
 
@@ -808,7 +842,7 @@ Security Features:
 Architecture:
 • RESTful API design
 • Modular component structure
-• Separation of concerns
+• Role-based dashboards
 • Industry best practices
 
 This project demonstrates enterprise-grade security implementation suitable for healthcare applications.`);

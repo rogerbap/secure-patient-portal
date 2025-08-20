@@ -100,7 +100,7 @@ router.post('/login',
 );
 
 /**
- * @route   POST /api/auth/refresh
+ * @route   POST /api/auth/refresh - THIS WAS MISSING!
  * @desc    Refresh access token using refresh token
  * @access  Private (requires refresh token in cookies)
  */

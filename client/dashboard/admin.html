@@ -1,0 +1,1012 @@
+<!-- client/dashboard/admin.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - HealthSecure Portal</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/css/dashboard.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+</head>
+<body>
+    <!-- Navigation Header -->
+    <header class="dashboard-header">
+        <div class="header-content">
+            <div class="brand-section">
+                <div class="logo">
+                    <i class="fas fa-shield-alt"></i>
+                    <span class="brand-name">HealthSecure</span>
+                </div>
+                <div class="user-context">
+                    <span class="role-badge admin">Admin Portal</span>
+                </div>
+            </div>
+
+            <nav class="main-nav">
+                <ul class="nav-links">
+                    <li><a href="#overview" class="nav-link active" data-section="overview">
+                        <i class="fas fa-home"></i>Overview
+                    </a></li>
+                    <li><a href="#users" class="nav-link" data-section="users">
+                        <i class="fas fa-users-cog"></i>User Management
+                    </a></li>
+                    <li><a href="#security" class="nav-link" data-section="security">
+                        <i class="fas fa-shield-alt"></i>Security Logs
+                        <span class="notification-badge">5</span>
+                    </a></li>
+                    <li><a href="#system" class="nav-link" data-section="system">
+                        <i class="fas fa-server"></i>System Health
+                    </a></li>
+                    <li><a href="#reports" class="nav-link" data-section="reports">
+                        <i class="fas fa-chart-pie"></i>Reports
+                    </a></li>
+                </ul>
+            </nav>
+
+            <div class="header-actions">
+                <button class="action-btn notifications" onclick="toggleNotifications()">
+                    <i class="fas fa-bell"></i>
+                    <span class="notification-dot"></span>
+                </button>
+                <div class="user-menu">
+                    <button class="user-avatar" onclick="toggleUserMenu()">
+                        <img src="../assets/images/admin-avatar.jpg" alt="Admin Avatar" 
+                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="avatar-fallback">
+                            <i class="fas fa-user-shield"></i>
+                        </div>
+                        <span class="user-name" id="userName">Admin User</span>
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                    <div class="user-dropdown" id="userDropdown">
+                        <a href="#profile" class="dropdown-item">
+                            <i class="fas fa-user-edit"></i>Edit Profile
+                        </a>
+                        <a href="#settings" class="dropdown-item">
+                            <i class="fas fa-cog"></i>System Settings
+                        </a>
+                        <a href="#security" class="dropdown-item">
+                            <i class="fas fa-shield-alt"></i>Security Center
+                        </a>
+                        <div class="dropdown-divider"></div>
+                        <a href="#" class="dropdown-item logout" onclick="handleLogout()">
+                            <i class="fas fa-sign-out-alt"></i>Logout
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard Content -->
+    <main class="dashboard-main">
+        <!-- Security Status Bar -->
+        <div class="security-status-bar">
+            <div class="security-indicator">
+                <div class="status-icon warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="status-info">
+                    <span class="status-text">Elevated Security Monitoring</span>
+                    <small class="status-details">Risk Level: Medium | Admin Session | Enhanced Logging Active</small>
+                </div>
+            </div>
+            <div class="session-info">
+                <span class="session-timer" id="sessionTimer">Session: 1h 45m remaining</span>
+                <button class="extend-session-btn" onclick="extendSession()">
+                    <i class="fas fa-clock"></i>Extend
+                </button>
+            </div>
+        </div>
+
+        <!-- Overview Section -->
+        <section class="dashboard-section active" id="overview">
+            <div class="section-header">
+                <h2>System Overview</h2>
+                <p class="section-subtitle">Administrative dashboard and system monitoring</p>
+            </div>
+
+            <!-- Admin Stats -->
+            <div class="stats-grid">
+                <div class="stat-card upcoming">
+                    <div class="stat-icon">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" data-target="1247">0</div>
+                        <div class="stat-label">Total Users</div>
+                        <div class="stat-change positive">+15 this week</div>
+                    </div>
+                </div>
+                <div class="stat-card results">
+                    <div class="stat-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" data-target="23">0</div>
+                        <div class="stat-label">Security Alerts</div>
+                        <div class="stat-change">5 high priority</div>
+                    </div>
+                </div>
+                <div class="stat-card messages">
+                    <div class="stat-icon">
+                        <i class="fas fa-server"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" data-target="99">0</div>
+                        <div class="stat-label">System Uptime</div>
+                        <div class="stat-change">99.8% this month</div>
+                    </div>
+                </div>
+                <div class="stat-card prescriptions">
+                    <div class="stat-icon">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <div class="stat-content">
+                        <div class="stat-number" data-target="45678">0</div>
+                        <div class="stat-label">Total Records</div>
+                        <div class="stat-change">HIPAA compliant</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Admin Dashboard Grid -->
+            <div class="dashboard-grid">
+                <div class="dashboard-card recent-activity">
+                    <div class="card-header">
+                        <h3><i class="fas fa-clock"></i>Recent System Activity</h3>
+                        <button class="view-all-btn">View All Logs</button>
+                    </div>
+                    <div class="activity-list">
+                        <div class="activity-item">
+                            <div class="activity-icon result">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">New User Registration</div>
+                                <div class="activity-meta">
+                                    <span class="activity-provider">sarah.wilson@email.com</span>
+                                    <span class="activity-time">2 hours ago</span>
+                                </div>
+                            </div>
+                            <div class="activity-status confirmed">Approved</div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon message">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">High Risk Login Detected</div>
+                                <div class="activity-meta">
+                                    <span class="activity-provider">IP: 192.168.1.100</span>
+                                    <span class="activity-time">4 hours ago</span>
+                                </div>
+                            </div>
+                            <div class="activity-status unread">Investigating</div>
+                        </div>
+                        <div class="activity-item">
+                            <div class="activity-icon appointment">
+                                <i class="fas fa-server"></i>
+                            </div>
+                            <div class="activity-content">
+                                <div class="activity-title">System Backup Completed</div>
+                                <div class="activity-meta">
+                                    <span class="activity-provider">Database backup</span>
+                                    <span class="activity-time">6 hours ago</span>
+                                </div>
+                            </div>
+                            <div class="activity-status confirmed">Success</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Admin Quick Actions -->
+                <div class="dashboard-card quick-actions">
+                    <div class="card-header">
+                        <h3><i class="fas fa-bolt"></i>Admin Actions</h3>
+                    </div>
+                    <div class="actions-grid">
+                        <button class="action-tile" onclick="navigateToSection('users')">
+                            <div class="action-icon">
+                                <i class="fas fa-user-plus"></i>
+                            </div>
+                            <div class="action-label">Manage Users</div>
+                        </button>
+                        <button class="action-tile" onclick="navigateToSection('security')">
+                            <div class="action-icon">
+                                <i class="fas fa-shield-alt"></i>
+                            </div>
+                            <div class="action-label">Security Logs</div>
+                        </button>
+                        <button class="action-tile" onclick="navigateToSection('system')">
+                            <div class="action-icon">
+                                <i class="fas fa-cogs"></i>
+                            </div>
+                            <div class="action-label">System Config</div>
+                        </button>
+                        <button class="action-tile" onclick="navigateToSection('reports')">
+                            <div class="action-icon">
+                                <i class="fas fa-file-alt"></i>
+                            </div>
+                            <div class="action-label">Generate Report</div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- System Health Summary -->
+            <div class="dashboard-card health-summary">
+                <div class="card-header">
+                    <h3><i class="fas fa-heartbeat"></i>System Health</h3>
+                    <span class="last-updated">Last updated: 2 minutes ago</span>
+                </div>
+                <div class="health-metrics">
+                    <div class="metric-item">
+                        <div class="metric-label">API Status</div>
+                        <div class="metric-value">Operational</div>
+                        <div class="metric-detail">Response time: 45ms</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Database</div>
+                        <div class="metric-value">Healthy</div>
+                        <div class="metric-detail">Connections: 12/100</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Security Engine</div>
+                        <div class="metric-value">Active</div>
+                        <div class="metric-detail">Threats blocked: 127</div>
+                    </div>
+                    <div class="metric-item">
+                        <div class="metric-label">Backup Status</div>
+                        <div class="metric-value">Current</div>
+                        <div class="metric-detail">Last backup: 6 hours ago</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- User Management Section -->
+        <section class="dashboard-section" id="users">
+            <div class="section-header">
+                <h2>User Management</h2>
+                <button class="primary-btn" onclick="alert('Add user functionality')">
+                    <i class="fas fa-plus"></i>Add New User
+                </button>
+            </div>
+
+            <div class="users-container">
+                <div class="users-filters">
+                    <input type="text" placeholder="Search users..." class="form-input">
+                    <select class="form-input">
+                        <option>All Roles</option>
+                        <option>Patients</option>
+                        <option>Providers</option>
+                        <option>Admins</option>
+                    </select>
+                    <select class="form-input">
+                        <option>All Status</option>
+                        <option>Active</option>
+                        <option>Inactive</option>
+                        <option>Locked</option>
+                    </select>
+                </div>
+
+                <div class="users-table">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>User</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Last Login</th>
+                                <th>Risk Score</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="user-info">
+                                        <div class="user-avatar">JP</div>
+                                        <div>
+                                            <div class="user-name">John Patient</div>
+                                            <div class="user-email">patient@demo.com</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="role-badge patient">Patient</span></td>
+                                <td><span class="status-badge active">Active</span></td>
+                                <td>2 hours ago</td>
+                                <td><span class="risk-score low">25</span></td>
+                                <td>
+                                    <button class="btn-secondary">Edit</button>
+                                    <button class="btn-outline">View</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-info">
+                                        <div class="user-avatar">DS</div>
+                                        <div>
+                                            <div class="user-name">Dr. Sarah Smith</div>
+                                            <div class="user-email">doctor@demo.com</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="role-badge provider">Provider</span></td>
+                                <td><span class="status-badge active">Active</span></td>
+                                <td>1 hour ago</td>
+                                <td><span class="risk-score low">15</span></td>
+                                <td>
+                                    <button class="btn-secondary">Edit</button>
+                                    <button class="btn-outline">View</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div class="user-info">
+                                        <div class="user-avatar">SU</div>
+                                        <div>
+                                            <div class="user-name">Suspicious User</div>
+                                            <div class="user-email">suspicious@demo.com</div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td><span class="role-badge patient">Patient</span></td>
+                                <td><span class="status-badge warning">Flagged</span></td>
+                                <td>5 hours ago</td>
+                                <td><span class="risk-score high">85</span></td>
+                                <td>
+                                    <button class="btn-danger">Investigate</button>
+                                    <button class="btn-outline">View</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Security Logs Section -->
+        <section class="dashboard-section" id="security">
+            <div class="section-header">
+                <h2>Security Monitoring</h2>
+                <button class="primary-btn" onclick="alert('Export logs functionality')">
+                    <i class="fas fa-download"></i>Export Logs
+                </button>
+            </div>
+
+            <div class="security-container">
+                <div class="security-filters">
+                    <select class="form-input">
+                        <option>All Severity</option>
+                        <option>Critical</option>
+                        <option>High</option>
+                        <option>Medium</option>
+                        <option>Low</option>
+                    </select>
+                    <select class="form-input">
+                        <option>Last 24 Hours</option>
+                        <option>Last Week</option>
+                        <option>Last Month</option>
+                    </select>
+                </div>
+
+                <div class="security-logs">
+                    <div class="log-item high">
+                        <div class="log-severity">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            HIGH
+                        </div>
+                        <div class="log-content">
+                            <div class="log-title">Suspicious Login Pattern Detected</div>
+                            <div class="log-details">
+                                Multiple failed login attempts from IP 192.168.1.100
+                            </div>
+                            <div class="log-meta">
+                                <span>User: suspicious@demo.com</span>
+                                <span>Time: 4 hours ago</span>
+                                <span>IP: 192.168.1.100</span>
+                            </div>
+                        </div>
+                        <div class="log-actions">
+                            <button class="btn-danger">Block IP</button>
+                            <button class="btn-outline">Investigate</button>
+                        </div>
+                    </div>
+
+                    <div class="log-item medium">
+                        <div class="log-severity">
+                            <i class="fas fa-exclamation-circle"></i>
+                            MEDIUM
+                        </div>
+                        <div class="log-content">
+                            <div class="log-title">New Location Login</div>
+                            <div class="log-details">
+                                User logged in from new geographic location
+                            </div>
+                            <div class="log-meta">
+                                <span>User: patient@demo.com</span>
+                                <span>Time: 6 hours ago</span>
+                                <span>Location: New York, NY</span>
+                            </div>
+                        </div>
+                        <div class="log-actions">
+                            <button class="btn-secondary">Verify</button>
+                            <button class="btn-outline">Details</button>
+                        </div>
+                    </div>
+
+                    <div class="log-item low">
+                        <div class="log-severity">
+                            <i class="fas fa-info-circle"></i>
+                            LOW
+                        </div>
+                        <div class="log-content">
+                            <div class="log-title">Successful Login</div>
+                            <div class="log-details">
+                                Normal user authentication completed
+                            </div>
+                            <div class="log-meta">
+                                <span>User: doctor@demo.com</span>
+                                <span>Time: 8 hours ago</span>
+                                <span>Risk Score: 15</span>
+                            </div>
+                        </div>
+                        <div class="log-actions">
+                            <button class="btn-outline">Details</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- System Health Section -->
+        <section class="dashboard-section" id="system">
+            <div class="section-header">
+                <h2>System Health & Configuration</h2>
+                <button class="primary-btn" onclick="alert('System settings functionality')">
+                    <i class="fas fa-cogs"></i>Configure
+                </button>
+            </div>
+
+            <div class="system-container">
+                <div class="system-metrics">
+                    <div class="metric-card">
+                        <h4>Server Performance</h4>
+                        <div class="metric-chart">
+                            <div class="chart-placeholder">
+                                <i class="fas fa-chart-area"></i>
+                                <p>CPU: 25% | Memory: 45% | Disk: 62%</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Security Status</h4>
+                        <div class="security-metrics">
+                            <div class="security-item">
+                                <span>Firewall</span>
+                                <span class="status-active">Active</span>
+                            </div>
+                            <div class="security-item">
+                                <span>SSL Certificate</span>
+                                <span class="status-valid">Valid</span>
+                            </div>
+                            <div class="security-item">
+                                <span>Intrusion Detection</span>
+                                <span class="status-active">Monitoring</span>
+                            </div>
+                            <div class="security-item">
+                                <span>Data Encryption</span>
+                                <span class="status-active">AES-256</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="system-services">
+                    <h4>System Services</h4>
+                    <div class="services-list">
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h5>Authentication Service</h5>
+                                <p>JWT token management and user authentication</p>
+                            </div>
+                            <div class="service-status">
+                                <span class="status-running">Running</span>
+                                <button class="btn-outline">Restart</button>
+                            </div>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h5>Risk Assessment Engine</h5>
+                                <p>Real-time security risk analysis</p>
+                            </div>
+                            <div class="service-status">
+                                <span class="status-running">Running</span>
+                                <button class="btn-outline">Configure</button>
+                            </div>
+                        </div>
+                        <div class="service-item">
+                            <div class="service-info">
+                                <h5>Audit Logging</h5>
+                                <p>HIPAA compliant activity logging</p>
+                            </div>
+                            <div class="service-status">
+                                <span class="status-running">Running</span>
+                                <button class="btn-outline">View Logs</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Reports Section -->
+        <section class="dashboard-section" id="reports">
+            <div class="section-header">
+                <h2>Analytics & Reports</h2>
+                <button class="primary-btn" onclick="alert('Generate report functionality')">
+                    <i class="fas fa-file-pdf"></i>Generate Report
+                </button>
+            </div>
+
+            <div class="reports-container">
+                <div class="report-categories">
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="report-info">
+                            <h4>Security Report</h4>
+                            <p>Comprehensive security analysis and threat summary</p>
+                            <small>Last generated: 2 days ago</small>
+                        </div>
+                        <button class="btn-secondary">Generate</button>
+                    </div>
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="report-info">
+                            <h4>User Activity Report</h4>
+                            <p>User engagement and system usage statistics</p>
+                            <small>Last generated: 1 week ago</small>
+                        </div>
+                        <button class="btn-secondary">Generate</button>
+                    </div>
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-server"></i>
+                        </div>
+                        <div class="report-info">
+                            <h4>System Performance</h4>
+                            <p>Infrastructure health and performance metrics</p>
+                            <small>Last generated: 3 days ago</small>
+                        </div>
+                        <button class="btn-secondary">Generate</button>
+                    </div>
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-clipboard-check"></i>
+                        </div>
+                        <div class="report-info">
+                            <h4>Compliance Audit</h4>
+                            <p>HIPAA compliance status and audit trail</p>
+                            <small>Last generated: 1 month ago</small>
+                        </div>
+                        <button class="btn-secondary">Generate</button>
+                    </div>
+                </div>
+
+                <div class="reports-analytics">
+                    <h4>Quick Analytics</h4>
+                    <div class="analytics-summary">
+                        <div class="summary-item">
+                            <h5>System Usage</h5>
+                            <div class="usage-stats">
+                                <div class="stat">
+                                    <span>Peak Hours</span>
+                                    <span>9 AM - 5 PM</span>
+                                </div>
+                                <div class="stat">
+                                    <span>Active Users Today</span>
+                                    <span>324</span>
+                                </div>
+                                <div class="stat">
+                                    <span>Average Session</span>
+                                    <span>45 minutes</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="summary-item">
+                            <h5>Security Metrics</h5>
+                            <div class="security-stats">
+                                <div class="stat">
+                                    <span>Threats Blocked</span>
+                                    <span>127 this week</span>
+                                </div>
+                                <div class="stat">
+                                    <span>Risk Assessments</span>
+                                    <span>1,543 total</span>
+                                </div>
+                                <div class="stat">
+                                    <span>Average Risk Score</span>
+                                    <span>23/100</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Notification Panel -->
+    <div class="notification-panel" id="notificationPanel">
+        <div class="notification-header">
+            <h3>System Notifications</h3>
+            <button class="close-notifications" onclick="toggleNotifications()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="notification-list">
+            <div class="notification-item unread">
+                <div class="notification-icon security">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">High Risk Login Detected</div>
+                    <div class="notification-message">Multiple failed login attempts from suspicious IP address</div>
+                    <div class="notification-time">4 hours ago</div>
+                </div>
+            </div>
+            <div class="notification-item unread">
+                <div class="notification-icon system">
+                    <i class="fas fa-server"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">System Backup Completed</div>
+                    <div class="notification-message">Automated database backup completed successfully</div>
+                    <div class="notification-time">6 hours ago</div>
+                </div>
+            </div>
+            <div class="notification-item">
+                <div class="notification-icon appointment">
+                    <i class="fas fa-user-plus"></i>
+                </div>
+                <div class="notification-content">
+                    <div class="notification-title">New User Registration</div>
+                    <div class="notification-message">New provider registration pending approval</div>
+                    <div class="notification-time">1 day ago</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="../assets/js/dashboard.js"></script>
+    <script>
+        // Admin-specific customizations
+        document.addEventListener('DOMContentLoaded', () => {
+            // Update user info for admin
+            const userInfo = window.dashboardManager?.getUserInfo();
+            if (userInfo && userInfo.role === 'admin') {
+                const adminNameEl = document.getElementById('adminName');
+                if (adminNameEl) {
+                    adminNameEl.textContent = userInfo.firstName || 'Admin';
+                }
+            }
+        });
+    </script>
+
+    <style>
+        /* Admin-specific styles */
+        .users-table table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+        }
+
+        .users-table th,
+        .users-table td {
+            padding: 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .users-table th {
+            background: var(--bg-secondary);
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .user-email {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .status-badge {
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .status-badge.active {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .status-badge.warning {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning-color);
+        }
+
+        .risk-score {
+            padding: 0.25rem 0.5rem;
+            border-radius: var(--radius-md);
+            font-weight: 600;
+        }
+
+        .risk-score.low {
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .risk-score.high {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger-color);
+        }
+
+        .log-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: var(--radius-lg);
+            margin-bottom: 1rem;
+            border-left: 4px solid;
+        }
+
+        .log-item.high {
+            border-left-color: var(--danger-color);
+        }
+
+        .log-item.medium {
+            border-left-color: var(--warning-color);
+        }
+
+        .log-item.low {
+            border-left-color: var(--success-color);
+        }
+
+        .log-severity {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 600;
+            font-size: 0.875rem;
+            min-width: 80px;
+        }
+
+        .log-content {
+            flex: 1;
+        }
+
+        .log-title {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .log-details {
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .log-meta {
+            display: flex;
+            gap: 1rem;
+            font-size: 0.875rem;
+            color: var(--text-light);
+        }
+
+        .log-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .system-metrics {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .metric-card {
+            background: white;
+            padding: 1.5rem;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-placeholder {
+            text-align: center;
+            padding: 2rem;
+            color: var(--text-secondary);
+        }
+
+        .security-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .security-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-active,
+        .status-valid,
+        .status-running {
+            padding: 0.25rem 0.75rem;
+            border-radius: var(--radius-md);
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--success-color);
+        }
+
+        .services-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .service-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.5rem;
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .service-status {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .report-categories {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .report-card {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1.5rem;
+            background: white;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--border-color);
+        }
+
+        .report-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--radius-lg);
+            background: rgba(37, 99, 235, 0.1);
+            color: var(--primary-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+
+        .report-info {
+            flex: 1;
+        }
+
+        .report-info h4 {
+            margin-bottom: 0.25rem;
+        }
+
+        .report-info p {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .report-info small {
+            color: var(--text-light);
+            font-size: 0.75rem;
+        }
+
+        .analytics-summary {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .summary-item h5 {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .usage-stats,
+        .security-stats {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+
+        .stat {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-light);
+        }
+
+        .stat:last-child {
+            border-bottom: none;
+        }
+
+        @media (max-width: 768px) {
+            .system-metrics,
+            .analytics-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .users-table {
+                overflow-x: auto;
+            }
+
+            .log-item {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .log-actions {
+                width: 100%;
+                justify-content: flex-end;
+            }
+        }
+    </style>
+</body>
+</html>

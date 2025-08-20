@@ -1,1002 +1,424 @@
-//client/assets/js/dashboard.js
+//server/routes/dashboard.js - ENHANCED WITH ROLE-BASED ROUTING
+const express = require('express');
+const path = require('path');
+const router = express.Router();
+const { authenticateToken, authorizeRoles } = require('../middleware/auth');
+const { globalRateLimit } = require('../middleware/rateLimit');
+const logger = require('../utils/logger');
+
 /**
- * HealthSecure Portal - Dashboard JavaScript
- * Handles dashboard functionality, navigation, and user interactions
- * FIXED VERSION - Enhanced authentication and error handling
+ * @route   GET /api/dashboard/patient
+ * @desc    Get patient dashboard data
+ * @access  Private (Patient role)
  */
+router.get('/patient', 
+  authenticateToken,
+  authorizeRoles('patient'),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Demo patient dashboard data
+      const dashboardData = {
+        user: {
+          name: req.user.firstName || 'Patient',
+          role: 'patient',
+          lastLogin: new Date().toISOString()
+        },
+        summary: {
+          upcomingAppointments: 2,
+          pendingResults: 1,
+          unreadMessages: 3,
+          prescriptions: 4
+        },
+        recentActivity: [
+          {
+            type: 'appointment',
+            title: 'Annual Physical Scheduled',
+            date: new Date().toISOString(),
+            status: 'confirmed'
+          },
+          {
+            type: 'result',
+            title: 'Lab Results Available',
+            date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+            status: 'available'
+          }
+        ]
+      };
 
-class DashboardManager {
-    constructor() {
-        this.apiBaseUrl = 'http://localhost:3000';
-        this.currentSection = 'overview';
-        this.sessionTimeout = null;
-        this.sessionWarningShown = false;
-        this.notificationPanel = false;
-        this.userDropdown = false;
-        
-        this.init();
+      res.json({
+        success: true,
+        data: dashboardData
+      });
+
+    } catch (error) {
+      logger.error('Patient dashboard error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to load patient dashboard'
+      });
     }
+  }
+);
 
-    /**
-     * Initialize the dashboard
-     */
-    init() {
-        console.log('🏥 Dashboard Manager - Initializing...');
-        
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.onDOMReady());
-        } else {
-            this.onDOMReady();
-        }
+/**
+ * @route   GET /api/dashboard/provider
+ * @desc    Get provider dashboard data
+ * @access  Private (Provider role)
+ */
+router.get('/provider', 
+  authenticateToken,
+  authorizeRoles(['provider', 'admin']),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Demo provider dashboard data
+      const dashboardData = {
+        user: {
+          name: req.user.firstName || 'Doctor',
+          role: 'provider',
+          lastLogin: new Date().toISOString()
+        },
+        summary: {
+          todaysAppointments: 12,
+          activePatients: 245,
+          patientMessages: 8,
+          pendingReviews: 15
+        },
+        schedule: [
+          {
+            time: '9:00 AM',
+            patient: 'John Patient',
+            type: 'Annual Physical',
+            room: 'Room 204',
+            status: 'confirmed'
+          },
+          {
+            time: '10:30 AM',
+            patient: 'Mary Johnson',
+            type: 'Follow-up',
+            room: 'Room 204',
+            status: 'confirmed'
+          },
+          {
+            time: '2:00 PM',
+            patient: 'Robert Brown',
+            type: 'Telehealth',
+            room: 'Virtual',
+            status: 'scheduled'
+          }
+        ],
+        recentActivity: [
+          {
+            type: 'patient_registration',
+            title: 'New Patient Registration',
+            date: new Date().toISOString(),
+            details: 'Sarah Wilson requested appointment'
+          },
+          {
+            type: 'lab_results',
+            title: 'Lab Results Ready',
+            date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            details: 'John Patient blood work available'
+          }
+        ]
+      };
+
+      res.json({
+        success: true,
+        data: dashboardData
+      });
+
+    } catch (error) {
+      logger.error('Provider dashboard error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to load provider dashboard'
+      });
     }
+  }
+);
 
-    /**
-     * Handle DOM ready state
-     */
-    onDOMReady() {
-        this.setupEventListeners();
-        this.loadUserData();
-        this.startSessionTimer();
-        this.animateCounters();
-        this.checkAuthentication();
-        
-        console.log('✅ Dashboard Manager - Ready');
+/**
+ * @route   GET /api/dashboard/admin
+ * @desc    Get admin dashboard data
+ * @access  Private (Admin role)
+ */
+router.get('/admin', 
+  authenticateToken,
+  authorizeRoles('admin'),
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      
+      // Demo admin dashboard data
+      const dashboardData = {
+        user: {
+          name: req.user.firstName || 'Admin',
+          role: 'admin',
+          lastLogin: new Date().toISOString()
+        },
+        summary: {
+          totalUsers: 1247,
+          securityAlerts: 23,
+          systemUptime: 99.8,
+          totalRecords: 45678
+        },
+        systemHealth: {
+          api: 'operational',
+          database: 'healthy',
+          security: 'active',
+          backup: 'current'
+        },
+        recentActivity: [
+          {
+            type: 'user_registration',
+            title: 'New User Registration',
+            date: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+            details: 'sarah.wilson@email.com registered'
+          },
+          {
+            type: 'security_alert',
+            title: 'High Risk Login Detected',
+            date: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+            details: 'Suspicious activity from IP 192.168.1.100'
+          },
+          {
+            type: 'system_backup',
+            title: 'System Backup Completed',
+            date: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+            details: 'Database backup successful'
+          }
+        ],
+        securityLogs: [
+          {
+            severity: 'HIGH',
+            event: 'Suspicious Login Pattern',
+            user: 'suspicious@demo.com',
+            ip: '192.168.1.100',
+            time: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString()
+          },
+          {
+            severity: 'MEDIUM',
+            event: 'New Location Login',
+            user: 'patient@demo.com',
+            ip: '192.168.1.50',
+            time: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString()
+          }
+        ]
+      };
+
+      res.json({
+        success: true,
+        data: dashboardData
+      });
+
+    } catch (error) {
+      logger.error('Admin dashboard error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to load admin dashboard'
+      });
     }
+  }
+);
 
-    /**
-     * Setup all event listeners
-     */
-    setupEventListeners() {
-        // Navigation links
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => this.handleNavigation(e));
-        });
-
-        // User menu toggle
-        const userAvatar = document.querySelector('.user-avatar');
-        if (userAvatar) {
-            userAvatar.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleUserMenu();
-            });
-        }
-
-        // Notification toggle
-        const notificationBtn = document.querySelector('.notifications');
-        if (notificationBtn) {
-            notificationBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                this.toggleNotifications();
-            });
-        }
-
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', () => {
-            this.closeAllDropdowns();
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
-
-        // Session extension
-        const extendBtn = document.querySelector('.extend-session-btn');
-        if (extendBtn) {
-            extendBtn.addEventListener('click', () => this.extendSession());
-        }
-
-        // Window events
-        window.addEventListener('beforeunload', () => this.handleBeforeUnload());
-        document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
-    }
-
-    /**
-     * Handle navigation between sections
-     */
-    handleNavigation(event) {
-        event.preventDefault();
-        
-        const link = event.currentTarget;
-        const section = link.dataset.section;
-        
-        if (section) {
-            this.showSection(section);
-            this.updateActiveNavigation(link);
-            
-            // Log navigation for analytics
-            console.log(`📊 Navigation: ${this.currentSection} → ${section}`);
-        }
-    }
-
-    /**
-     * Show specific dashboard section
-     */
-    showSection(sectionName) {
-        // Hide all sections
-        document.querySelectorAll('.dashboard-section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        // Show target section
-        const targetSection = document.getElementById(sectionName);
-        if (targetSection) {
-            targetSection.classList.add('active');
-            this.currentSection = sectionName;
-            
-            // Load section-specific data
-            this.loadSectionData(sectionName);
-        }
-    }
-
-    /**
-     * Update active navigation state
-     */
-    updateActiveNavigation(activeLink) {
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
-        });
-        
-        activeLink.classList.add('active');
-    }
-
-    /**
-     * Load section-specific data
-     */
-    async loadSectionData(sectionName) {
-        try {
-            switch (sectionName) {
-                case 'overview':
-                    await this.loadOverviewData();
-                    break;
-                case 'appointments':
-                    await this.loadAppointmentsData();
-                    break;
-                case 'records':
-                    await this.loadRecordsData();
-                    break;
-                case 'messages':
-                    await this.loadMessagesData();
-                    break;
-                case 'prescriptions':
-                    await this.loadPrescriptionsData();
-                    break;
-            }
-        } catch (error) {
-            console.error(`Failed to load ${sectionName} data:`, error);
-            this.showError(`Failed to load ${sectionName} data`);
-        }
-    }
-
-    /**
-     * Load overview dashboard data
-     */
-    async loadOverviewData() {
-        try {
-            const userInfo = this.getUserInfo();
-            if (!userInfo) return;
-
-            // For demo, we'll use static data
-            // In production, this would make API calls
-            try {
-                const response = await this.makeAuthenticatedRequest(`/api/dashboard/${userInfo.role}`);
-                
-                if (response && response.success) {
-                    this.updateOverviewUI(response.data);
-                    return;
-                }
-            } catch (error) {
-                console.warn('API call failed, using demo data:', error.message);
-            }
-            
-            // Fallback to demo data
-            this.updateOverviewUI(this.getDemoOverviewData());
-        } catch (error) {
-            console.warn('Using demo data for overview');
-            this.updateOverviewUI(this.getDemoOverviewData());
-        }
-    }
-
-    /**
-     * Get demo overview data
-     */
-    getDemoOverviewData() {
-        const userInfo = this.getUserInfo();
-        return {
-            user: {
-                name: userInfo ? userInfo.firstName || 'User' : 'Demo User',
-                memberSince: '2023-01-15'
-            },
-            summary: {
-                upcomingAppointments: 2,
-                pendingResults: 1,
-                unreadMessages: 3,
-                prescriptions: 4
-            }
-        };
-    }
-
-    /**
-     * Update overview UI with data
-     */
-    updateOverviewUI(data) {
-        // Update user name
-        const userNameEl = document.getElementById('patientName');
-        if (userNameEl && data.user) {
-            userNameEl.textContent = data.user.name?.split(' ')[0] || 'User';
-        }
-
-        // Update stat counters
-        if (data.summary) {
-            this.updateStatCounters(data.summary);
-        }
-    }
-
-    /**
-     * Update stat counters with animation
-     */
-    updateStatCounters(summary) {
-        const statCards = document.querySelectorAll('.stat-number');
-        
-        statCards.forEach(card => {
-            const target = parseInt(card.dataset.target) || 0;
-            this.animateCounter(card, target);
-        });
-    }
-
-    /**
-     * Animate counter to target value
-     */
-    animateCounter(element, target) {
-        let current = 0;
-        const increment = target / 50; // 50 steps
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                current = target;
-                clearInterval(timer);
-            }
-            element.textContent = Math.floor(current);
-        }, 40); // 40ms intervals for smooth animation
-    }
-
-    /**
-     * Animate all counters on page load
-     */
-    animateCounters() {
-        const counters = document.querySelectorAll('.stat-number');
-        
-        counters.forEach(counter => {
-            const target = parseInt(counter.dataset.target) || 0;
-            setTimeout(() => {
-                this.animateCounter(counter, target);
-            }, 500); // Delay for page load
-        });
-    }
-
-    /**
-     * Load user data and update UI
-     */
-    async loadUserData() {
-        try {
-            const userInfo = this.getUserInfo();
-            
-            if (userInfo) {
-                this.updateUserUI(userInfo);
-            } else {
-                // If no user info, redirect to login
-                console.log('❌ No user info found, redirecting to login');
-                this.redirectToLogin();
-            }
-        } catch (error) {
-            console.error('Failed to load user data:', error);
-            this.redirectToLogin();
-        }
-    }
-
-    /**
-     * Get user info from session storage - ENHANCED VERSION
-     */
-    getUserInfo() {
-        try {
-            // First try userInfo
-            const userInfo = sessionStorage.getItem('userInfo');
-            if (userInfo) {
-                const parsed = JSON.parse(userInfo);
-                if (parsed && parsed.email) {
-                    return parsed;
-                }
-            }
-            
-            // Fallback: try to get from login data
-            const loginData = sessionStorage.getItem('loginData');
-            if (loginData) {
-                const parsed = JSON.parse(loginData);
-                if (parsed && parsed.user) {
-                    return parsed.user;
-                }
-            }
-            
-            // Last resort: check if we have a demo token
-            const authToken = sessionStorage.getItem('authToken');
-            if (authToken && authToken.startsWith('demo-token-')) {
-                // Extract user type from demo token
-                const userType = authToken.split('-')[2];
-                return {
-                    id: userType,
-                    email: `${userType}@demo.com`,
-                    role: userType,
-                    firstName: userType.charAt(0).toUpperCase() + userType.slice(1),
-                    lastName: 'User'
-                };
-            }
-            
-            return null;
-        } catch (error) {
-            console.error('Error parsing user info:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Update user interface with user data
-     */
-    updateUserUI(userInfo) {
-        // Update user name in header
-        const userNameEl = document.getElementById('userName');
-        if (userNameEl) {
-            userNameEl.textContent = `${userInfo.firstName || 'User'} ${userInfo.lastName || ''}`.trim();
-        }
-
-        // Update patient name in welcome message
-        const patientNameEl = document.getElementById('patientName');
-        if (patientNameEl) {
-            patientNameEl.textContent = userInfo.firstName || 'User';
-        }
-
-        // Update role badge if needed
-        const roleBadge = document.querySelector('.role-badge');
-        if (roleBadge && userInfo.role) {
-            roleBadge.textContent = `${userInfo.role.charAt(0).toUpperCase() + userInfo.role.slice(1)} Portal`;
-            roleBadge.className = `role-badge ${userInfo.role}`;
-        }
-    }
-
-    /**
-     * Check authentication status - ENHANCED VERSION
-     */
-    async checkAuthentication() {
-        try {
-            const token = sessionStorage.getItem('authToken');
-            const userInfo = this.getUserInfo();
-            
-            // If we have user info from login, skip server verification for demo
-            if (userInfo && userInfo.email) {
-                console.log('✅ Demo authentication - User found in session');
-                return;
-            }
-            
-            if (!token) {
-                console.log('❌ No auth token found, redirecting to login');
-                this.redirectToLogin();
-                return;
-            }
-
-            // Try to verify token with server
-            try {
-                const response = await this.makeAuthenticatedRequest('/api/auth/verify-token');
-                
-                if (!response || !response.success) {
-                    console.log('❌ Token verification failed, redirecting to login');
-                    this.redirectToLogin();
-                }
-            } catch (error) {
-                console.warn('⚠️ Server verification failed, continuing with demo mode:', error.message);
-                // In demo mode, if server is unavailable but we have some user data, continue
-                if (userInfo) {
-                    console.log('✅ Continuing with cached user data');
-                } else {
-                    this.redirectToLogin();
-                }
-            }
-        } catch (error) {
-            console.error('Authentication check error:', error);
-            this.redirectToLogin();
-        }
-    }
-
-    /**
-     * Make authenticated API request - ENHANCED VERSION
-     */
-    async makeAuthenticatedRequest(endpoint) {
-        const token = sessionStorage.getItem('authToken');
-        
-        try {
-            const response = await fetch(`${this.apiBaseUrl}${endpoint}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
-                },
-                timeout: 5000 // 5 second timeout
-            });
-
-            if (response.status === 401) {
-                this.redirectToLogin();
-                return null;
-            }
-
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-
-            return await response.json();
-        } catch (error) {
-            console.warn('API request failed:', error.message);
-            throw error;
-        }
-    }
-
-    /**
-     * Session management
-     */
-    startSessionTimer() {
-        // 30 minutes session timeout
-        const timeoutDuration = 30 * 60 * 1000;
-        const warningTime = 5 * 60 * 1000; // 5 minutes warning
-        
-        // Clear existing timer
-        if (this.sessionTimeout) {
-            clearTimeout(this.sessionTimeout);
-        }
-
-        // Set session timeout
-        this.sessionTimeout = setTimeout(() => {
-            this.handleSessionTimeout();
-        }, timeoutDuration);
-
-        // Show warning before timeout
-        setTimeout(() => {
-            if (!this.sessionWarningShown) {
-                this.showSessionWarning();
-            }
-        }, timeoutDuration - warningTime);
-
-        // Update session timer display
-        this.updateSessionTimer(timeoutDuration);
-    }
-
-    /**
-     * Update session timer display
-     */
-    updateSessionTimer(remainingTime) {
-        const timerEl = document.getElementById('sessionTimer');
-        if (!timerEl) return;
-
-        const updateDisplay = () => {
-            remainingTime -= 1000;
-            
-            if (remainingTime <= 0) {
-                timerEl.textContent = 'Session expired';
-                return;
-            }
-
-            const hours = Math.floor(remainingTime / (1000 * 60 * 60));
-            const minutes = Math.floor((remainingTime % (1000 * 60 * 60)) / (1000 * 60));
-            
-            timerEl.textContent = `Session: ${hours}h ${minutes}m remaining`;
-        };
-
-        updateDisplay();
-        const interval = setInterval(() => {
-            updateDisplay();
-            if (remainingTime <= 0) {
-                clearInterval(interval);
-            }
-        }, 60000); // Update every minute
-    }
-
-    /**
-     * Show session warning
-     */
-    showSessionWarning() {
-        this.sessionWarningShown = true;
-        
-        const confirmed = confirm(
-            'Your session will expire in 5 minutes. Would you like to extend your session?'
-        );
-        
-        if (confirmed) {
-            this.extendSession();
-        }
-    }
-
-    /**
-     * Extend user session
-     */
-    async extendSession() {
-        try {
-            const response = await this.makeAuthenticatedRequest('/api/auth/refresh');
-            
-            if (response && response.success) {
-                // Update token if provided
-                if (response.accessToken) {
-                    sessionStorage.setItem('authToken', response.accessToken);
-                }
-                
-                // Restart session timer
-                this.sessionWarningShown = false;
-                this.startSessionTimer();
-                
-                this.showNotification('Session extended successfully', 'success');
-            }
-        } catch (error) {
-            console.error('Failed to extend session:', error);
-            this.showNotification('Failed to extend session', 'error');
-        }
-    }
-
-    /**
-     * Handle session timeout
-     */
-    handleSessionTimeout() {
-        alert('Your session has expired. You will be redirected to the login page.');
-        this.logout();
-    }
-
-    /**
-     * Toggle user dropdown menu
-     */
-    toggleUserMenu() {
-        const dropdown = document.getElementById('userDropdown');
-        
-        if (dropdown) {
-            this.userDropdown = !this.userDropdown;
-            
-            if (this.userDropdown) {
-                dropdown.classList.add('show');
-                this.notificationPanel = false;
-                this.hideNotifications();
-            } else {
-                dropdown.classList.remove('show');
-            }
-        }
-    }
-
-    /**
-     * Toggle notifications panel
-     */
-    toggleNotifications() {
-        const panel = document.getElementById('notificationPanel');
-        
-        if (panel) {
-            this.notificationPanel = !this.notificationPanel;
-            
-            if (this.notificationPanel) {
-                panel.classList.add('show');
-                this.userDropdown = false;
-                this.hideUserDropdown();
-                this.loadNotifications();
-            } else {
-                panel.classList.remove('show');
-            }
-        }
-    }
-
-    /**
-     * Close all dropdown menus
-     */
-    closeAllDropdowns() {
-        this.hideUserDropdown();
-        this.hideNotifications();
-    }
-
-    /**
-     * Hide user dropdown
-     */
-    hideUserDropdown() {
-        const dropdown = document.getElementById('userDropdown');
-        if (dropdown) {
-            dropdown.classList.remove('show');
-            this.userDropdown = false;
-        }
-    }
-
-    /**
-     * Hide notifications panel
-     */
-    hideNotifications() {
-        const panel = document.getElementById('notificationPanel');
-        if (panel) {
-            panel.classList.remove('show');
-            this.notificationPanel = false;
-        }
-    }
-
-    /**
-     * Load notifications
-     */
-    async loadNotifications() {
-        try {
-            const response = await this.makeAuthenticatedRequest('/api/dashboard/notifications');
-            
-            if (response && response.success) {
-                this.updateNotificationsUI(response.data.notifications);
-            } else {
-                throw new Error('API call failed');
-            }
-        } catch (error) {
-            console.warn('Using demo notifications');
-            this.updateNotificationsUI(this.getDemoNotifications());
-        }
-    }
-
-    /**
-     * Get demo notifications
-     */
-    getDemoNotifications() {
-        return [
+/**
+ * @route   GET /api/dashboard/notifications
+ * @desc    Get user notifications
+ * @access  Private
+ */
+router.get('/notifications', 
+  authenticateToken,
+  globalRateLimit,
+  async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const userRole = req.user.role;
+      
+      let notifications = [];
+      
+      // Role-based notifications
+      switch (userRole) {
+        case 'patient':
+          notifications = [
             {
-                id: 1,
-                type: 'appointment',
-                title: 'Appointment Confirmed',
-                message: 'Your appointment with Dr. Smith has been confirmed for January 15th at 10:00 AM',
-                timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-                read: false
+              id: 1,
+              type: 'appointment',
+              title: 'Appointment Confirmed',
+              message: 'Your appointment with Dr. Smith has been confirmed for January 15th at 10:00 AM',
+              timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+              read: false
             },
             {
-                id: 2,
-                type: 'result',
-                title: 'Lab Results Available',
-                message: 'Your blood test results are now available for viewing',
-                timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-                read: false
+              id: 2,
+              type: 'result',
+              title: 'Lab Results Available',
+              message: 'Your blood test results are now available for viewing',
+              timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+              read: false
             }
-        ];
-    }
-
-    /**
-     * Update notifications UI
-     */
-    updateNotificationsUI(notifications) {
-        const notificationList = document.querySelector('.notification-list');
-        if (!notificationList) return;
-
-        if (notifications.length === 0) {
-            notificationList.innerHTML = `
-                <div class="text-center" style="padding: 2rem; color: var(--text-secondary);">
-                    <i class="fas fa-bell-slash" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>No notifications</p>
-                </div>
-            `;
-            return;
-        }
-
-        notificationList.innerHTML = notifications.map(notification => `
-            <div class="notification-item ${notification.read ? '' : 'unread'}" data-id="${notification.id}">
-                <div class="notification-icon ${notification.type}">
-                    <i class="fas fa-${this.getNotificationIcon(notification.type)}"></i>
-                </div>
-                <div class="notification-content">
-                    <div class="notification-title">${notification.title}</div>
-                    <div class="notification-message">${notification.message}</div>
-                    <div class="notification-time">${this.formatTimeAgo(notification.timestamp)}</div>
-                </div>
-            </div>
-        `).join('');
-    }
-
-    /**
-     * Get notification icon based on type
-     */
-    getNotificationIcon(type) {
-        const icons = {
-            appointment: 'calendar-check',
-            result: 'vial',
-            message: 'envelope',
-            system: 'cog',
-            security: 'shield-alt'
-        };
-        return icons[type] || 'bell';
-    }
-
-    /**
-     * Format timestamp to "time ago" format
-     */
-    formatTimeAgo(timestamp) {
-        const now = new Date();
-        const time = new Date(timestamp);
-        const diffInSeconds = Math.floor((now - time) / 1000);
-
-        if (diffInSeconds < 60) return 'Just now';
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-        return `${Math.floor(diffInSeconds / 86400)} days ago`;
-    }
-
-    /**
-     * Handle keyboard shortcuts
-     */
-    handleKeyboardShortcuts(event) {
-        // Alt + number keys for navigation
-        if (event.altKey) {
-            const keyToSection = {
-                '1': 'overview',
-                '2': 'appointments',
-                '3': 'records',
-                '4': 'messages',
-                '5': 'prescriptions'
-            };
-
-            const section = keyToSection[event.key];
-            if (section) {
-                event.preventDefault();
-                this.showSection(section);
-                
-                // Update navigation
-                const navLink = document.querySelector(`[data-section="${section}"]`);
-                if (navLink) {
-                    this.updateActiveNavigation(navLink);
-                }
+          ];
+          break;
+          
+        case 'provider':
+          notifications = [
+            {
+              id: 1,
+              type: 'patient',
+              title: 'New Patient Registration',
+              message: 'Sarah Wilson has registered and requested an appointment',
+              timestamp: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+              read: false
+            },
+            {
+              id: 2,
+              type: 'result',
+              title: 'Lab Results Ready',
+              message: 'John Patient\'s blood work results are available for review',
+              timestamp: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+              read: false
             }
-        }
-
-        // Escape key to close dropdowns
-        if (event.key === 'Escape') {
-            this.closeAllDropdowns();
-        }
-    }
-
-    /**
-     * Handle visibility change (tab switching)
-     */
-    handleVisibilityChange() {
-        if (document.hidden) {
-            console.log('🔒 Dashboard hidden - Pausing updates');
-        } else {
-            console.log('👁️ Dashboard visible - Resuming updates');
-            // Don't check authentication on every visibility change in demo mode
-            const userInfo = this.getUserInfo();
-            if (!userInfo) {
-                this.checkAuthentication();
+          ];
+          break;
+          
+        case 'admin':
+          notifications = [
+            {
+              id: 1,
+              type: 'security',
+              title: 'High Risk Login Detected',
+              message: 'Multiple failed login attempts from suspicious IP address',
+              timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+              read: false
+            },
+            {
+              id: 2,
+              type: 'system',
+              title: 'System Backup Completed',
+              message: 'Automated database backup completed successfully',
+              timestamp: new Date(Date.now() - 6 * 60 * 60 * 1000).toISOString(),
+              read: false
+            },
+            {
+              id: 3,
+              type: 'user',
+              title: 'New User Registration',
+              message: 'New provider registration pending approval',
+              timestamp: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
+              read: true
             }
+          ];
+          break;
+      }
+
+      res.json({
+        success: true,
+        data: {
+          notifications,
+          unreadCount: notifications.filter(n => !n.read).length
         }
+      });
+
+    } catch (error) {
+      logger.error('Notifications error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to load notifications'
+      });
     }
+  }
+);
 
-    /**
-     * Handle before page unload
-     */
-    handleBeforeUnload() {
-        console.log('🔄 Dashboard unloading - Cleaning up');
-        
-        if (this.sessionTimeout) {
-            clearTimeout(this.sessionTimeout);
-        }
+/**
+ * @route   POST /api/dashboard/notifications/:id/mark-read
+ * @desc    Mark notification as read
+ * @access  Private
+ */
+router.post('/notifications/:id/mark-read', 
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const notificationId = req.params.id;
+      const userId = req.user.id;
+      
+      // In a real implementation, this would update the database
+      logger.info('Notification marked as read', {
+        userId,
+        notificationId
+      });
+
+      res.json({
+        success: true,
+        message: 'Notification marked as read'
+      });
+
+    } catch (error) {
+      logger.error('Mark notification read error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to mark notification as read'
+      });
     }
+  }
+);
 
-    /**
-     * Show notification message
-     */
-    showNotification(message, type = 'info') {
-        // Create notification element
-        const notification = document.createElement('div');
-        notification.className = `notification-toast ${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 
-                                  type === 'error' ? 'exclamation-circle' : 
-                                  'info-circle'}"></i>
-                <span>${message}</span>
-            </div>
-            <button class="close-notification">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
+/**
+ * @route   GET /api/dashboard/stats
+ * @desc    Get dashboard statistics
+ * @access  Private
+ */
+router.get('/stats', 
+  authenticateToken,
+  async (req, res) => {
+    try {
+      const userRole = req.user.role;
+      let stats = {};
+      
+      switch (userRole) {
+        case 'patient':
+          stats = {
+            upcomingAppointments: 2,
+            pendingResults: 1,
+            unreadMessages: 3,
+            activePrescriptions: 4
+          };
+          break;
+          
+        case 'provider':
+          stats = {
+            todaysAppointments: 12,
+            activePatients: 245,
+            patientMessages: 8,
+            pendingReviews: 15
+          };
+          break;
+          
+        case 'admin':
+          stats = {
+            totalUsers: 1247,
+            securityAlerts: 23,
+            systemUptime: 99.8,
+            totalRecords: 45678
+          };
+          break;
+      }
 
-        // Add styles
-        notification.style.cssText = `
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 1rem;
-            box-shadow: var(--shadow-lg);
-            z-index: 1050;
-            max-width: 300px;
-            animation: slideInRight 0.3s ease-out;
-        `;
+      res.json({
+        success: true,
+        data: stats
+      });
 
-        // Add to page
-        document.body.appendChild(notification);
-
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
-            }
-        }, 5000);
-
-        // Manual close
-        const closeBtn = notification.querySelector('.close-notification');
-        closeBtn.addEventListener('click', () => notification.remove());
+    } catch (error) {
+      logger.error('Dashboard stats error:', error);
+      res.status(500).json({
+        success: false,
+        message: 'Failed to load dashboard statistics'
+      });
     }
+  }
+);
 
-    /**
-     * Show error message
-     */
-    showError(message) {
-        this.showNotification(message, 'error');
-    }
-
-    /**
-     * Logout user
-     */
-    async logout() {
-        try {
-            // Call logout API
-            await this.makeAuthenticatedRequest('/api/auth/logout');
-        } catch (error) {
-            console.error('Logout API call failed:', error);
-        } finally {
-            // Clear session data
-            sessionStorage.removeItem('authToken');
-            sessionStorage.removeItem('userInfo');
-            sessionStorage.removeItem('loginData');
-            
-            // Clear timers
-            if (this.sessionTimeout) {
-                clearTimeout(this.sessionTimeout);
-            }
-            
-            // Redirect to login
-            this.redirectToLogin();
-        }
-    }
-
-    /**
-     * Redirect to login page
-     */
-    redirectToLogin() {
-        console.log('🔄 Redirecting to login...');
-        window.location.href = '/login.html';
-    }
-
-    /**
-     * Placeholder methods for section-specific data loading
-     */
-    async loadAppointmentsData() {
-        console.log('📅 Loading appointments data...');
-        // Implementation would load appointments from API
-    }
-
-    async loadRecordsData() {
-        console.log('📄 Loading medical records data...');
-        // Implementation would load records from API
-    }
-
-    async loadMessagesData() {
-        console.log('💬 Loading messages data...');
-        // Implementation would load messages from API
-    }
-
-    async loadPrescriptionsData() {
-        console.log('💊 Loading prescriptions data...');
-        // Implementation would load prescriptions from API
-    }
-}
-
-// Global functions for onclick handlers
-function navigateToSection(sectionName) {
-    if (window.dashboardManager) {
-        window.dashboardManager.showSection(sectionName);
-        
-        // Update navigation
-        const navLink = document.querySelector(`[data-section="${sectionName}"]`);
-        if (navLink) {
-            window.dashboardManager.updateActiveNavigation(navLink);
-        }
-    }
-}
-
-function toggleNotifications() {
-    if (window.dashboardManager) {
-        window.dashboardManager.toggleNotifications();
-    }
-}
-
-function toggleUserMenu() {
-    if (window.dashboardManager) {
-        window.dashboardManager.toggleUserMenu();
-    }
-}
-
-function extendSession() {
-    if (window.dashboardManager) {
-        window.dashboardManager.extendSession();
-    }
-}
-
-function handleLogout() {
-    if (window.dashboardManager) {
-        window.dashboardManager.logout();
-    }
-}
-
-// Placeholder functions for various actions
-function scheduleAppointment() {
-    alert('Schedule Appointment functionality would be implemented here.');
-}
-
-function requestRecords() {
-    alert('Request Records functionality would be implemented here.');
-}
-
-function composeMessage() {
-    alert('Compose Message functionality would be implemented here.');
-}
-
-function requestRefill() {
-    alert('Request Refill functionality would be implemented here.');
-}
-
-// Initialize dashboard when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.dashboardManager = new DashboardManager();
-});
-
-// Add CSS for notification toast
-const style = document.createElement('style');
-style.textContent = `
-    .notification-toast {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-    }
-    
-    .notification-toast .notification-content {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .notification-toast.success {
-        border-left: 4px solid var(--success-color);
-    }
-    
-    .notification-toast.error {
-        border-left: 4px solid var(--danger-color);
-    }
-    
-    .notification-toast.info {
-        border-left: 4px solid var(--info-color);
-    }
-    
-    .close-notification {
-        background: none;
-        border: none;
-        color: var(--text-secondary);
-        cursor: pointer;
-        padding: 0.25rem;
-        border-radius: var(--radius-sm);
-        transition: var(--transition);
-    }
-    
-    .close-notification:hover {
-        color: var(--text-primary);
-        background: var(--bg-secondary);
-    }
-    
-    @keyframes slideInRight {
-        from {
-            opacity: 0;
-            transform: translateX(100%);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
-    }
-`;
-document.head.appendChild(style);
-
-console.log('🏥 Dashboard system loaded successfully');
+module.exports = router;

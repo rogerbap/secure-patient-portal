@@ -1,12 +1,11 @@
-//server/app.js
+//server/app.js - FIXED VERSION WITH PROPER DASHBOARD ROUTING
 /**
  * Secure Patient Portal - Express Application Configuration
- * 
- * Updated to include all routes and enhanced middleware configuration.
- * Implements healthcare-grade security measures with comprehensive
- * route handling and error management.
+ *
+ * FIXED: Enhanced dashboard routing that properly handles authentication
+ * and supports both session-based and token-based authentication
  */
-//server/app.js - Complete Updated Version
+
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -16,10 +15,11 @@ const path = require('path');
 // Import configuration and utilities
 const logger = require('./utils/logger');
 const auditService = require('./services/auditService');
+const authService = require('./services/authService');
 
 // Import middleware
 const { globalRateLimit, authRateLimit } = require('./middleware/rateLimit');
-const { logApiAccess } = require('./middleware/auth');
+const { logApiAccess, authenticateToken, optionalAuth } = require('./middleware/auth');
 
 // Import routes
 const apiRoutes = require('./routes/index');
@@ -95,7 +95,7 @@ app.use(session({
 /**
  * Request Parsing Middleware
  */
-app.use(express.json({ 
+app.use(express.json({
   limit: '10mb',
   verify: (req, res, buf) => {
     req.rawBody = buf;
@@ -166,6 +166,77 @@ app.use('/api', logApiAccess);
 app.use('/api', apiRoutes);
 
 /**
+ * Enhanced Authentication Check Middleware for Dashboard Routes
+ * This checks multiple sources for user authentication
+ */
+const checkDashboardAuth = async (req, res, next) => {
+  let userRole = null;
+  
+  try {
+    // Method 1: Check Authorization header (JWT token)
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      
+      try {
+        // Try to verify as a real JWT token first
+        const decoded = authService.verifyAccessToken(token);
+        userRole = decoded.role;
+        req.user = decoded;
+      } catch (jwtError) {
+        // If JWT verification fails, check if it's a demo token
+        if (token.startsWith('demo-token-')) {
+          const parts = token.split('-');
+          if (parts.length >= 3) {
+            userRole = parts[2];
+            req.user = { role: userRole, id: parts[2] };
+          }
+        }
+      }
+    }
+    
+    // Method 2: Check session data
+    if (!userRole && req.session && req.session.userData) {
+      userRole = req.session.userData.role;
+      req.user = req.session.userData;
+    }
+    
+    // Method 3: Check for user info in session storage (via request headers)
+    if (!userRole && req.headers['x-user-role']) {
+      // This can be set by frontend for demo purposes
+      userRole = req.headers['x-user-role'];
+    }
+    
+    // Method 4: Check for demo authentication cookie
+    if (!userRole && req.headers.cookie) {
+      const cookies = req.headers.cookie.split(';').reduce((acc, cookie) => {
+        const [key, value] = cookie.trim().split('=');
+        acc[key] = value;
+        return acc;
+      }, {});
+      
+      if (cookies.demoAuth) {
+        try {
+          const demoData = JSON.parse(decodeURIComponent(cookies.demoAuth));
+          userRole = demoData.role;
+          req.user = demoData;
+        } catch (cookieError) {
+          // Ignore cookie parsing errors
+        }
+      }
+    }
+    
+    req.userRole = userRole;
+    next();
+    
+  } catch (error) {
+    logger.error('Dashboard auth check error:', error);
+    req.userRole = null;
+    next();
+  }
+};
+
+/**
  * Demo endpoint
  */
 app.get('/demo', (req, res) => {
@@ -174,36 +245,44 @@ app.get('/demo', (req, res) => {
     version: '1.0.0',
     description: 'Healthcare security demonstration with risk assessment',
     timestamp: new Date().toISOString(),
-    mode: 'minimal',
+    mode: 'enhanced',
     demoAccounts: {
-      patient: { 
-        email: 'patient@demo.com', 
+      patient: {
+        email: 'patient@demo.com',
         password: 'SecurePass123!',
         role: 'patient',
-        riskLevel: 'Low (25/100)'
+        riskLevel: 'Low (25/100)',
+        dashboard: '/dashboard/patient'
       },
-      provider: { 
-        email: 'doctor@demo.com', 
+      provider: {
+        email: 'doctor@demo.com',
         password: 'SecurePass123!',
         role: 'provider',
-        riskLevel: 'Low (15/100)'
+        riskLevel: 'Low (15/100)',
+        dashboard: '/dashboard/provider'
       },
-      admin: { 
-        email: 'admin@demo.com', 
+      admin: {
+        email: 'admin@demo.com',
         password: 'SecurePass123!',
         role: 'admin',
-        riskLevel: 'Medium (35/100)'
+        riskLevel: 'Medium (35/100)',
+        dashboard: '/dashboard/admin'
       },
-      suspicious: { 
-        email: 'suspicious@demo.com', 
+      suspicious: {
+        email: 'suspicious@demo.com',
         password: 'SecurePass123!',
         role: 'patient',
-        riskLevel: 'High (85/100)'
+        riskLevel: 'High (85/100)',
+        dashboard: '/dashboard/patient'
       }
     },
     endpoints: {
       login: '/',
-      dashboard: '/dashboard/',
+      dashboards: {
+        patient: '/dashboard/patient',
+        provider: '/dashboard/provider',
+        admin: '/dashboard/admin'
+      },
       api: '/api',
       health: '/api/health'
     }
@@ -211,16 +290,114 @@ app.get('/demo', (req, res) => {
 });
 
 /**
- * Handle client-side routing for dashboard
+ * FIXED Dashboard Routing with Multiple Authentication Methods
  */
-app.get('/dashboard/*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../client/dashboard/patient.html'));
+
+// Patient Dashboard - FIXED to prevent redirect loops
+app.get('/dashboard/patient', checkDashboardAuth, (req, res) => {
+  const userRole = req.userRole;
+  
+  console.log(`Dashboard access attempt: /dashboard/patient, userRole: ${userRole}`);
+  
+  // Allow patients, suspicious users (who are patients), and admins
+  if (userRole === 'patient' || userRole === 'admin') {
+    res.sendFile(path.join(__dirname, '../client/dashboard/patient.html'));
+  } else if (!userRole) {
+    console.log('No authentication found, redirecting to login');
+    res.redirect(`/?redirect=${encodeURIComponent('/dashboard/patient')}&error=authentication_required`);
+  } else {
+    console.log(`Wrong role ${userRole} for patient dashboard, redirecting to ${userRole} dashboard`);
+    if (userRole === 'provider') {
+      res.redirect('/dashboard/provider');
+    } else if (userRole === 'admin') {
+      res.redirect('/dashboard/admin');
+    } else {
+      res.redirect('/?error=invalid_role');
+    }
+  }
+});
+
+// Provider Dashboard
+app.get('/dashboard/provider', checkDashboardAuth, (req, res) => {
+  const userRole = req.userRole;
+  
+  console.log(`Dashboard access attempt: /dashboard/provider, userRole: ${userRole}`);
+  
+  if (userRole === 'provider' || userRole === 'admin') {
+    res.sendFile(path.join(__dirname, '../client/dashboard/provider.html'));
+  } else if (!userRole) {
+    res.redirect(`/?redirect=${encodeURIComponent('/dashboard/provider')}&error=authentication_required`);
+  } else {
+    if (userRole === 'patient') {
+      res.redirect('/dashboard/patient');
+    } else if (userRole === 'admin') {
+      res.redirect('/dashboard/admin');
+    } else {
+      res.redirect('/?error=invalid_role');
+    }
+  }
+});
+
+// Admin Dashboard
+app.get('/dashboard/admin', checkDashboardAuth, (req, res) => {
+  const userRole = req.userRole;
+  
+  console.log(`Dashboard access attempt: /dashboard/admin, userRole: ${userRole}`);
+  
+  if (userRole === 'admin') {
+    res.sendFile(path.join(__dirname, '../client/dashboard/admin.html'));
+  } else if (!userRole) {
+    res.redirect(`/?redirect=${encodeURIComponent('/dashboard/admin')}&error=authentication_required`);
+  } else {
+    if (userRole === 'patient') {
+      res.redirect('/dashboard/patient');
+    } else if (userRole === 'provider') {
+      res.redirect('/dashboard/provider');
+    } else {
+      res.redirect('/?error=access_denied');
+    }
+  }
+});
+
+// Generic dashboard route - redirect based on role
+app.get('/dashboard', checkDashboardAuth, (req, res) => {
+  const userRole = req.userRole;
+  
+  console.log(`Generic dashboard access, userRole: ${userRole}`);
+  
+  if (userRole) {
+    res.redirect(`/dashboard/${userRole}`);
+  } else {
+    res.redirect('/?error=authentication_required');
+  }
+});
+
+// FIXED: Catch-all for dashboard routes to prevent loops
+app.get('/dashboard/*', checkDashboardAuth, (req, res) => {
+  const userRole = req.userRole;
+  const requestedPath = req.path;
+  
+  console.log(`Dashboard catch-all: ${requestedPath}, userRole: ${userRole}`);
+  
+  const targetDashboard = `/dashboard/${userRole}`;
+  
+  if (!userRole) {
+    res.redirect('/?error=session_expired');
+  } else if (requestedPath === targetDashboard) {
+    res.sendFile(path.join(__dirname, `../client/dashboard/${userRole}.html`));
+  } else {
+    res.redirect(targetDashboard);
+  }
 });
 
 /**
- * Legacy login route - redirect to index
+ * Login routes
  */
 app.get('/login', (req, res) => {
+  res.redirect('/');
+});
+
+app.get('/login.html', (req, res) => {
   res.redirect('/');
 });
 
@@ -241,7 +418,11 @@ app.get('/', (req, res) => {
       },
       frontend: {
         login: '/',
-        dashboard: '/dashboard/'
+        dashboards: {
+          patient: '/dashboard/patient',
+          provider: '/dashboard/provider',
+          admin: '/dashboard/admin'
+        }
       },
       timestamp: new Date().toISOString()
     });
@@ -252,14 +433,38 @@ app.get('/', (req, res) => {
 });
 
 /**
+ * Health check endpoint
+ */
+app.get('/health', (req, res) => {
+  res.json({
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    version: '1.0.0',
+    services: {
+      api: 'operational',
+      database: 'connected',
+      authentication: 'active'
+    }
+  });
+});
+
+/**
  * 404 Handler - MUST BE LAST
  */
 app.use('*', (req, res) => {
   if (req.originalUrl.startsWith('/api/')) {
-    res.status(404).json({ 
+    res.status(404).json({
       error: 'API endpoint not found',
       path: req.originalUrl,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      availableEndpoints: [
+        '/api/auth/login',
+        '/api/auth/refresh',
+        '/api/dashboard/patient',
+        '/api/dashboard/provider',
+        '/api/dashboard/admin',
+        '/api/health'
+      ]
     });
   } else {
     // For any unknown route, serve the login page
@@ -299,7 +504,7 @@ app.use((error, req, res, next) => {
   
   const isDevelopment = process.env.NODE_ENV === 'development';
   
-  if (req.originalUrl.startsWith('/api/') || 
+  if (req.originalUrl.startsWith('/api/') ||
       (req.headers.accept && req.headers.accept.includes('application/json'))) {
     
     const errorResponse = {
