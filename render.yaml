@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: secure-patient-portal
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    plan: free  # or starter for $7/month
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET  
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: AUDIT_LOG_ENABLED
+        value: true
+      - key: RISK_ASSESSMENT_ENABLED
+        value: true
+      - key: LOG_FILE_ENABLED
+        value: false
+
+databases:
+  - name: portal-database
+    databaseName: secure_portal
+    user: portal_user
+    plan: free  
