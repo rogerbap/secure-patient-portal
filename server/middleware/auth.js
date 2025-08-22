@@ -8,7 +8,7 @@
 
 const authService = require('../services/authService');
 const auditService = require('../services/auditService');
-const User = require('../models/User');
+const User = require('../models/user');
 const logger = require('../utils/logger');
 
 /**
@@ -120,19 +120,20 @@ const authenticateToken = async (req, res, next) => {
 
     // Log successful authentication
     await auditService.logUserAction({
-      userId: user.id,
+      userId: req.user.id,
       action: 'API_ACCESS',
       details: {
         endpoint: req.originalUrl,
-        method: req.method
+        method: req.method,
+        tokenType: 'demo'
       },
       ipAddress: req.ip,
       userAgent: req.get('User-Agent'),
-      endpoint: req.originalUrl,
-      httpMethod: req.method
+      // endpoint: req.originalUrl,
+      // httpMethod: req.method
     });
 
-    next();
+    return next();
 
   } catch (error) {
     let errorMessage = 'Authentication failed';

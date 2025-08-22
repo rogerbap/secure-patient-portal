@@ -13,7 +13,7 @@ const User = sequelize.define('User', {
     primaryKey: true,
     allowNull: false
   },
-  
+
   // Authentication fields
   email: {
     type: DataTypes.STRING(255),
@@ -41,17 +41,11 @@ const User = sequelize.define('User', {
       len: {
         args: [8, 255],
         msg: 'Password must be at least 8 characters long'
-      },
-      isComplex(value) {
-        // Password complexity validation
-        if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(value)) {
-          throw new Error('Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character');
-        }
       }
     }
   },
   
-  // Personal information
+ // Personal information
   firstName: {
     type: DataTypes.STRING(100),
     allowNull: false,
@@ -59,15 +53,10 @@ const User = sequelize.define('User', {
       len: {
         args: [1, 100],
         msg: 'First name must be between 1 and 100 characters'
-      },
-      is: {
-        args: /^[a-zA-Z\s\-'\.]+$/,
-        msg: 'First name can only contain letters, spaces, hyphens, apostrophes, and periods'
       }
     },
     set(value) {
-      // Capitalize first letter of each word
-      this.setDataValue('firstName', value ? value.trim().replace(/\b\w/g, l => l.toUpperCase()) : value);
+      this.setDataValue('firstName', value ? value.trim() : value);
     }
   },
   
@@ -78,15 +67,10 @@ const User = sequelize.define('User', {
       len: {
         args: [1, 100],
         msg: 'Last name must be between 1 and 100 characters'
-      },
-      is: {
-        args: /^[a-zA-Z\s\-'\.]+$/,
-        msg: 'Last name can only contain letters, spaces, hyphens, apostrophes, and periods'
       }
     },
     set(value) {
-      // Capitalize first letter of each word
-      this.setDataValue('lastName', value ? value.trim().replace(/\b\w/g, l => l.toUpperCase()) : value);
+      this.setDataValue('lastName', value ? value.trim() : value);
     }
   },
   
@@ -100,15 +84,6 @@ const User = sequelize.define('User', {
       isBefore: {
         args: new Date().toISOString().split('T')[0],
         msg: 'Date of birth must be in the past'
-      },
-      isReasonable(value) {
-        if (value) {
-          const birthYear = new Date(value).getFullYear();
-          const currentYear = new Date().getFullYear();
-          if (currentYear - birthYear > 150 || currentYear - birthYear < 0) {
-            throw new Error('Date of birth must be within a reasonable range');
-          }
-        }
       }
     }
   },
@@ -116,14 +91,7 @@ const User = sequelize.define('User', {
   phone: {
     type: DataTypes.STRING(20),
     allowNull: true,
-    validate: {
-      is: {
-        args: /^[\+]?[1-9][\d]{0,15}$/,
-        msg: 'Phone number must be a valid format'
-      }
-    },
     set(value) {
-      // Remove non-numeric characters except +
       this.setDataValue('phone', value ? value.replace(/[^\d\+]/g, '') : value);
     }
   },
@@ -132,16 +100,10 @@ const User = sequelize.define('User', {
   role: {
     type: DataTypes.ENUM('patient', 'provider', 'admin', 'staff'),
     allowNull: false,
-    defaultValue: 'patient',
-    validate: {
-      isIn: {
-        args: [['patient', 'provider', 'admin', 'staff']],
-        msg: 'Role must be patient, provider, admin, or staff'
-      }
-    }
+    defaultValue: 'patient'
   },
   
-  // Account status and security
+// Account status and security
   isActive: {
     type: DataTypes.BOOLEAN,
     allowNull: false,
@@ -195,15 +157,9 @@ const User = sequelize.define('User', {
   },
   
   lastLoginIp: {
-    type: DataTypes.STRING(45), // Supports IPv6
+    type: DataTypes.STRING(45),
     allowNull: true,
     comment: 'IP address of last login'
-  },
-  
-  lastLoginUserAgent: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-    comment: 'User agent string of last login'
   },
   
   failedLoginAttempts: {
@@ -298,11 +254,11 @@ const User = sequelize.define('User', {
     comment: 'ID of user who last updated this record'
   }
 }, {
-  // Model options
+// Model options
   tableName: 'users',
-  timestamps: true, // Adds createdAt and updatedAt
-  paranoid: true,   // Adds deletedAt for soft deletes
-  underscored: true, // Use snake_case for column names
+  timestamps: true,
+  paranoid: true,
+  underscored: true,
   
   // Indexes for performance
   indexes: [

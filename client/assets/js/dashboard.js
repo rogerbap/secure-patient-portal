@@ -1,12 +1,13 @@
-//client/assets/js/dashboard.js - ENHANCED VERSION WITH PROPER AUTHENTICATION
+//client/assets/js/dashboard.js - FIXED VERSION WITH CORRECTED API BASE URL DETECTION
 /**
  * HealthSecure Portal - Dashboard JavaScript
- * ENHANCED: Better authentication handling and session management
+ * FIXED: Proper API base URL detection for localhost and production environments
  */
 
 class DashboardManager {
     constructor() {
-        this.apiBaseUrl = 'http://localhost:3000';
+        // FIXED: Improved API base URL detection
+        this.apiBaseUrl = this.getApiBaseUrl();
         this.currentSection = 'overview';
         this.sessionTimeout = null;
         this.sessionWarningShown = false;
@@ -20,10 +21,49 @@ class DashboardManager {
     }
 
     /**
+     * FIXED: Get API base URL dynamically with better logic
+     */
+    getApiBaseUrl() {
+        const hostname = window.location.hostname;
+        const port = window.location.port;
+        const protocol = window.location.protocol;
+        
+        console.log('🔍 Detecting API base URL:', { hostname, port, protocol });
+        
+        // For localhost development
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            // If we're on port 8080 (frontend dev server), API is on port 3000
+            if (port === '8080') {
+                const apiUrl = 'http://localhost:3000';
+                console.log('📡 Frontend dev server detected, API URL:', apiUrl);
+                return apiUrl;
+            }
+            // If we're on port 3000 (same server), use same origin
+            else if (port === '3000' || !port) {
+                const apiUrl = `${protocol}//${hostname}:3000`;
+                console.log('📡 Same server detected, API URL:', apiUrl);
+                return apiUrl;
+            }
+            // Other localhost ports, try 3000
+            else {
+                const apiUrl = 'http://localhost:3000';
+                console.log('📡 Other localhost port, trying API URL:', apiUrl);
+                return apiUrl;
+            }
+        }
+        
+        // For production (Render, Heroku, etc.), use same origin without port
+        const apiUrl = `${protocol}//${hostname}`;
+        console.log('📡 Production environment detected, API URL:', apiUrl);
+        return apiUrl;
+    }
+
+    /**
      * Initialize the dashboard
      */
     init() {
         console.log('🏥 Dashboard Manager - Initializing...');
+        console.log('🌐 API Base URL:', this.apiBaseUrl);
         
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.onDOMReady());
@@ -69,7 +109,6 @@ class DashboardManager {
             const demoAuth = this.getDemoAuthFromCookie();
             if (demoAuth) {
                 console.log('✅ Demo authentication found in cookie');
-                // Store in session storage for consistency
                 sessionStorage.setItem('userInfo', JSON.stringify(demoAuth));
                 return true;
             }
@@ -95,7 +134,6 @@ class DashboardManager {
                 } catch (error) {
                     console.warn('⚠️ Server verification failed, checking demo mode:', error.message);
                     
-                    // For demo tokens, this is acceptable
                     if (token.startsWith('demo-token-')) {
                         console.log('✅ Demo token detected, continuing');
                         return true;
@@ -116,7 +154,6 @@ class DashboardManager {
                         lastName: 'User'
                     };
                     
-                    // Store for later use
                     sessionStorage.setItem('userInfo', JSON.stringify(demoUserInfo));
                     console.log('✅ Demo authentication configured');
                     return true;
@@ -153,177 +190,161 @@ class DashboardManager {
         }
         return null;
     }
-
+    
     /**
      * Setup all event listeners
-     */setupEventListeners() {
-    // Navigation links - FIXED to prevent logout on Overview click
-    document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            const section = link.dataset.section;
-            if (section) {
-                console.log(`Navigation clicked: ${section}`);
-                this.handleNavigation(e);
-            }
-        });
-    });
-
-    // User menu toggle
-    const userAvatar = document.querySelector('.user-avatar');
-    if (userAvatar) {
-        userAvatar.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.toggleUserMenu();
-        });
-    }
-
-    // Notification toggle
-    const notificationBtn = document.querySelector('.notifications');
-    if (notificationBtn) {
-        notificationBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.toggleNotifications();
-        });
-    }
-
-    // FIXED: Logout button handling
-    document.querySelectorAll('.logout, [onclick*="handleLogout"], [onclick*="logout"]').forEach(logoutBtn => {
-        // Remove any existing onclick handlers
-        logoutBtn.removeAttribute('onclick');
-        
-        logoutBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            console.log('Logout button clicked');
-            this.logout();
-        });
-    });
-
-    // FIXED: Prevent dropdown items from causing navigation issues
-    document.querySelectorAll('.dropdown-item').forEach(item => {
-        if (!item.classList.contains('logout')) {
-            item.addEventListener('click', (e) => {
+     */
+    setupEventListeners() {
+        // Navigation links - FIXED to prevent logout on Overview click
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.addEventListener('click', (e) => {
                 e.preventDefault();
-                console.log('Dropdown item clicked:', item.textContent);
-                // Handle other dropdown actions here
+                e.stopPropagation();
+                
+                const section = link.dataset.section;
+                if (section) {
+                    console.log(`Navigation clicked: ${section}`);
+                    this.handleNavigation(e);
+                }
+            });
+        });
+
+        // User menu toggle
+        const userAvatar = document.querySelector('.user-avatar');
+        if (userAvatar) {
+            userAvatar.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleUserMenu();
             });
         }
-    });
 
-    // Close dropdowns when clicking outside
-    document.addEventListener('click', (e) => {
-        // Don't close if clicking on dropdown elements
-        if (!e.target.closest('.user-menu') && !e.target.closest('.notification-panel')) {
-            this.closeAllDropdowns();
+        // Notification toggle
+        const notificationBtn = document.querySelector('.notifications');
+        if (notificationBtn) {
+            notificationBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.toggleNotifications();
+            });
         }
-    });
 
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
-
-    // Session extension
-    const extendBtn = document.querySelector('.extend-session-btn');
-    if (extendBtn) {
-        extendBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.extendSession();
+        // FIXED: Logout button handling
+        document.querySelectorAll('.logout, [onclick*="handleLogout"], [onclick*="logout"]').forEach(logoutBtn => {
+            // Remove any existing onclick handlers
+            logoutBtn.removeAttribute('onclick');
+            
+            logoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('Logout button clicked');
+                this.logout();
+            });
         });
-    }
 
-    // Window events
-    window.addEventListener('beforeunload', () => this.handleBeforeUnload());
-    document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
-    
-    console.log('✅ Event listeners setup completed');
-}
+        // FIXED: Prevent dropdown items from causing navigation issues
+        document.querySelectorAll('.dropdown-item').forEach(item => {
+            if (!item.classList.contains('logout')) {
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    console.log('Dropdown item clicked:', item.textContent);
+                    // Handle other dropdown actions here
+                });
+            }
+        });
 
-// FIXED: Handle navigation between sections
-handleNavigation(event) {
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const link = event.currentTarget;
-    const section = link.dataset.section;
-    
-    console.log(`Handling navigation to: ${section}`);
-    
-    if (section) {
-        // Don't navigate away from the page, just show the section
-        this.showSection(section);
-        this.updateActiveNavigation(link);
-        
-        console.log(`📊 Navigation: ${this.currentSection} → ${section}`);
-    }
-}
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', (e) => {
+            // Don't close if clicking on dropdown elements
+            if (!e.target.closest('.user-menu') && !e.target.closest('.notification-panel')) {
+                this.closeAllDropdowns();
+            }
+        });
 
-// ENHANCED: Logout with better error handling
-async logout() {
-    try {
-        console.log('🔄 Starting logout process...');
-        
-        // Clear timers first
-        if (this.sessionTimeout) {
-            clearTimeout(this.sessionTimeout);
-        }
-        if (this.sessionTimerInterval) {
-            clearInterval(this.sessionTimerInterval);
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+
+        // Session extension
+        const extendBtn = document.querySelector('.extend-session-btn');
+        if (extendBtn) {
+            extendBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.extendSession();
+            });
         }
 
-        // Show logout message
-        this.showNotification('Logging out...', 'info');
-
-        // Try to call logout API (but don't fail if it doesn't work)
-        try {
-            await this.makeAuthenticatedRequest('/api/auth/logout');
-            console.log('✅ Server logout successful');
-        } catch (error) {
-            console.warn('⚠️ Server logout failed (continuing anyway):', error.message);
-        }
-
-        // Clear all session data
-        sessionStorage.removeItem('authToken');
-        sessionStorage.removeItem('userInfo');
-        sessionStorage.removeItem('loginData');
-        sessionStorage.removeItem('currentUserRole');
+        // Window events
+        window.addEventListener('beforeunload', () => this.handleBeforeUnload());
+        document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
         
-        // Clear demo auth cookie
-        document.cookie = 'demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=localhost;';
-        document.cookie = 'demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-        
-        console.log('✅ Session data cleared');
-        
-        // Small delay to show the notification
-        setTimeout(() => {
-            this.redirectToLogin();
-        }, 1000);
-        
-    } catch (error) {
-        console.error('❌ Logout error:', error);
-        // Force logout anyway
-        this.redirectToLogin();
+        console.log('✅ Event listeners setup completed');
     }
-}
 
-    /**
-     * Handle navigation between sections
-     */
+    // FIXED: Handle navigation between sections
     handleNavigation(event) {
         event.preventDefault();
+        event.stopPropagation();
         
         const link = event.currentTarget;
         const section = link.dataset.section;
         
+        console.log(`Handling navigation to: ${section}`);
+        
         if (section) {
+            // Don't navigate away from the page, just show the section
             this.showSection(section);
             this.updateActiveNavigation(link);
             
             console.log(`📊 Navigation: ${this.currentSection} → ${section}`);
+        }
+    }
+
+    // ENHANCED: Logout with better error handling
+    async logout() {
+        try {
+            console.log('🔄 Starting logout process...');
+            
+            // Clear timers first
+            if (this.sessionTimeout) {
+                clearTimeout(this.sessionTimeout);
+            }
+            if (this.sessionTimerInterval) {
+                clearInterval(this.sessionTimerInterval);
+            }
+
+            // Show logout message
+            this.showNotification('Logging out...', 'info');
+
+            // Try to call logout API (but don't fail if it doesn't work)
+            try {
+                await this.makeAuthenticatedRequest('/api/auth/logout');
+                console.log('✅ Server logout successful');
+            } catch (error) {
+                console.warn('⚠️ Server logout failed (continuing anyway):', error.message);
+            }
+
+            // Clear all session data
+            sessionStorage.removeItem('authToken');
+            sessionStorage.removeItem('userInfo');
+            sessionStorage.removeItem('loginData');
+            sessionStorage.removeItem('currentUserRole');
+            
+            // Clear demo auth cookie
+            document.cookie = 'demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=localhost;';
+            document.cookie = 'demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+            
+            console.log('✅ Session data cleared');
+            
+            // Small delay to show the notification
+            setTimeout(() => {
+                this.redirectToLogin();
+            }, 1000);
+            
+        } catch (error) {
+            console.error('❌ Logout error:', error);
+            // Force logout anyway
+            this.redirectToLogin();
         }
     }
 
@@ -1035,38 +1056,7 @@ async logout() {
     }
 
     /**
-     * Logout user
-     */
-    async logout() {
-        try {
-            if (this.sessionTimeout) {
-                clearTimeout(this.sessionTimeout);
-            }
-            if (this.sessionTimerInterval) {
-                clearInterval(this.sessionTimerInterval);
-            }
-
-            try {
-                await this.makeAuthenticatedRequest('/api/auth/logout');
-            } catch (error) {
-                console.warn('Logout API call failed:', error);
-            }
-        } finally {
-            // Clear all session data
-            sessionStorage.removeItem('authToken');
-            sessionStorage.removeItem('userInfo');
-            sessionStorage.removeItem('loginData');
-            sessionStorage.removeItem('currentUserRole');
-            
-            // Clear demo auth cookie
-            document.cookie = 'demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
-            
-            this.redirectToLogin();
-        }
-    }
-
-    /**
-     * Redirect to login page
+     * FIXED: Redirect to login page - Enhanced to handle different environments
      */
     redirectToLogin() {
         console.log('🔄 Redirecting to login...');
@@ -1078,7 +1068,30 @@ async logout() {
             clearInterval(this.sessionTimerInterval);
         }
         
-        window.location.href = '/';
+        // Clear authentication data
+        sessionStorage.removeItem('authToken');
+        sessionStorage.removeItem('userInfo');
+        sessionStorage.removeItem('loginData');
+        
+        // FIXED: Better redirect logic for different environments
+        const hostname = window.location.hostname;
+        const port = window.location.port;
+        
+        // For localhost development with separate frontend server
+        if (hostname === 'localhost' && port === '8080') {
+            // Redirect to frontend dev server root
+            window.location.href = 'http://localhost:8080/';
+        }
+        // For localhost development on same server
+        else if (hostname === 'localhost' && (port === '3000' || !port)) {
+            // Redirect to same server root
+            window.location.href = '/';
+        }
+        // For production environments
+        else {
+            // Redirect to root of current domain
+            window.location.href = '/';
+        }
     }
 
     /**
@@ -1158,6 +1171,8 @@ function requestRefill() {
 document.addEventListener('DOMContentLoaded', () => {
     window.dashboardManager = new DashboardManager();
 });
+
+console.log('🏥 Enhanced Dashboard system loaded successfully');
 
 // Add CSS for notification toast
 const style = document.createElement('style');

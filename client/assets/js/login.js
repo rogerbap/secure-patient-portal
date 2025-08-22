@@ -6,13 +6,13 @@
 
 class LoginManager {
     constructor() {
-        this.apiBaseUrl = 'http://localhost:3000';
+        // FIXED: Dynamic API base URL detection
+        this.apiBaseUrl = this.getApiBaseUrl();
         this.isDemoMode = true;
         this.currentUser = 'patient';
         this.isConnected = false;
 
-        // Demo user configurations
-
+        // Demo user configurations remain the same
         this.demoUsers = {
             patient: {
                 email: 'patient@demo.com',
@@ -41,18 +41,43 @@ class LoginManager {
                 riskLevel: 'HIGH',
                 profile: 'High-risk scenario with multiple security flags',
                 dashboardUrl: '/dashboard/patient',
-                role: 'patient'  // ADDED: Explicit role to prevent confusion
+                role: 'patient'
             }
         };
 
         this.init();
     }
 
+     /**
+     * FIXED: Get API base URL dynamically
+     */
+    getApiBaseUrl() {
+        // Check if we're in development (localhost) or production
+        const hostname = window.location.hostname;
+        const port = window.location.port;
+        const protocol = window.location.protocol;
+        
+        // For localhost development
+        if (hostname === 'localhost' || hostname === '127.0.0.1') {
+            // If we're on port 8080 (frontend dev server), API is on 3000
+            if (port === '8080') {
+                return 'http://localhost:3000';
+            }
+            // If we're on port 3000 (backend server), same origin
+            return `${protocol}//${hostname}:${port || 3000}`;
+        }
+        
+        // For production (Render, Heroku, etc.), use same origin
+        return `${protocol}//${hostname}${port ? ':' + port : ''}`;
+    }
+
+    
     /**
      * Initialize the login manager
      */
     init() {
         console.log('🔐 Login Manager - Initializing...');
+        console.log('🌐 API Base URL:', this.apiBaseUrl);
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.onDOMReady());
@@ -350,32 +375,58 @@ class LoginManager {
         });
     }
 
-    /**
-     * Check API connection status
+/**
+     * FIXED: Check API connection status with better error handling
      */
     async checkApiConnection() {
+        console.log('🔍 Checking API connection to:', this.apiBaseUrl + '/api/health');
+        
         try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 5000);
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout
 
             const response = await fetch(`${this.apiBaseUrl}/api/health`, {
-                signal: controller.signal
+                signal: controller.signal,
+                method: 'GET',
+                mode: 'cors', // Explicitly set CORS mode
+                credentials: 'include',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
             });
 
             clearTimeout(timeoutId);
-            const data = await response.json();
-
-            if (data.status === 'healthy') {
-                this.isConnected = true;
-                this.updateConnectionStatus('Connected', 'connected');
-                console.log('✅ API Connected:', data);
+            
+            console.log('📡 API Response status:', response.status);
+            
+            if (response.ok) {
+                const data = await response.json();
+                console.log('✅ API Response data:', data);
+                
+                if (data.status === 'healthy' || data.status === 'OK' || response.status === 200) {
+                    this.isConnected = true;
+                    this.updateConnectionStatus('Connected', 'connected');
+                    console.log('✅ API Connected:', data);
+                } else {
+                    throw new Error('API responded but status not healthy');
+                }
             } else {
-                throw new Error('API unhealthy');
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
         } catch (error) {
             this.isConnected = false;
             this.updateConnectionStatus('Offline', 'disconnected');
             console.warn('⚠️ API Connection failed:', error.message);
+            
+            // Show detailed error in development
+            if (window.location.hostname === 'localhost') {
+                console.error('🔧 Debug info:', {
+                    apiUrl: this.apiBaseUrl + '/api/health',
+                    error: error.message,
+                    type: error.name
+                });
+            }
         }
     }
 
@@ -390,8 +441,13 @@ class LoginManager {
             statusIcon.className = `fas fa-circle ${type}`;
             statusText.textContent = status;
         }
-    }
 
+        // Also update any other status indicators
+        const connectionStatus = document.querySelector('.connection-status');
+        if (connectionStatus) {
+            connectionStatus.setAttribute('data-status', type);
+        }
+    }
     /**
      * Handle login form submission - FIXED VERSION
      */
@@ -428,8 +484,8 @@ class LoginManager {
         }
     }
 
-    /**
-     * Handle demo mode login - ENHANCED WITH BETTER ROUTING
+       /**
+     * FIXED: Handle demo mode login with better API base URL
      */
     async handleDemoLogin(email, password) {
         await this.simulateDelay(1500);
@@ -438,8 +494,6 @@ class LoginManager {
 
         if (user && password === 'SecurePass123!') {
             const userType = Object.keys(this.demoUsers).find(key => this.demoUsers[key] === user);
-
-            // FIXED: For suspicious users, treat them as patients but with high risk
             const actualRole = user.role || userType;
             const displayRole = userType;
 
@@ -451,11 +505,11 @@ class LoginManager {
             this.updateRiskDisplay(user.riskScore, user.riskLevel);
             this.updateSecurityActions(user.riskScore);
 
-            // Store user info with actual role for routing
+            // Store user info
             const userInfo = {
                 id: userType,
                 email: email,
-                role: actualRole,  // Use 'patient' for suspicious users
+                role: actualRole,
                 firstName: userType.charAt(0).toUpperCase() + userType.slice(1),
                 lastName: 'User',
                 riskLevel: user.riskLevel,
@@ -486,7 +540,7 @@ class LoginManager {
     }
 
     /**
-     * Handle production mode login - ENHANCED VERSION
+     * FIXED: Handle production mode login with proper API URL
      */
     async handleProductionLogin(email, password) {
         if (!this.isConnected) {
@@ -498,8 +552,10 @@ class LoginManager {
             const response = await fetch(`${this.apiBaseUrl}/api/auth/login`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
                 },
+                credentials: 'include', // Important for cookies
                 body: JSON.stringify({ email, password })
             });
 
@@ -544,8 +600,8 @@ class LoginManager {
             this.showLoginResult('❌ Server error. Please try again.', 'error');
         }
     }
-
-    /**
+    
+ /**
      * Get dashboard URL for role
      */
     getDashboardUrlForRole(role) {
@@ -556,43 +612,53 @@ class LoginManager {
         };
         return dashboardUrls[role] || dashboardUrls.patient;
     }
-
-    /**
-     * ENHANCED: Navigate to dashboard with better error handling
+ /**
+     * FIXED: Navigate to dashboard with proper URL handling
      */
     navigateToDashboard(role, dashboardUrl = null) {
         console.log(`🔄 Navigating to ${role} dashboard...`);
 
-        // FIXED: Use the backend server URL (port 3000) instead of frontend (port 8080)
-        const backendUrl = this.apiBaseUrl; // http://localhost:3000
-        const url = dashboardUrl || this.getDashboardUrlForRole(role);
-        const fullUrl = `${backendUrl}${url}`;
+        // For production, use relative URLs
+        // For development with separate frontend server, use absolute URLs
+        const hostname = window.location.hostname;
+        const port = window.location.port;
+        
+        let targetUrl;
+        
+        if (hostname === 'localhost' && port === '8080') {
+            // Development: frontend on 8080, backend on 3000
+            const url = dashboardUrl || this.getDashboardUrlForRole(role);
+            targetUrl = `${this.apiBaseUrl}${url}`;
+        } else {
+            // Production or single-server development: use relative URLs
+            const url = dashboardUrl || this.getDashboardUrlForRole(role);
+            targetUrl = url;
+        }
 
         try {
-            // Store authentication data for the backend
+            // Store authentication data
             const userInfo = JSON.parse(sessionStorage.getItem('userInfo') || '{}');
 
-            // Set demo auth cookie for backend server
+            // Set demo auth cookie
             if (userInfo.role) {
-                // Set cookie for the backend domain
-                document.cookie = `demoAuth=${encodeURIComponent(JSON.stringify(userInfo))}; path=/; domain=localhost; max-age=86400; SameSite=Lax`;
+                const domain = hostname === 'localhost' ? 'localhost' : hostname;
+                document.cookie = `demoAuth=${encodeURIComponent(JSON.stringify(userInfo))}; path=/; max-age=86400; SameSite=Lax`;
             }
 
-            console.log(`🎯 Navigating to: ${fullUrl}`);
-
-            // Navigate to the backend server
-            window.location.href = fullUrl;
+            console.log(`🎯 Navigating to: ${targetUrl}`);
+            window.location.href = targetUrl;
 
         } catch (error) {
             console.error('Navigation failed:', error);
 
             // Fallback: Show manual navigation link
             this.showLoginResult(
-                `🎉 Login successful! <a href="${fullUrl}" style="color: inherit; text-decoration: underline;" target="_blank">Click here to open your dashboard</a>`,
+                `🎉 Login successful! <a href="${targetUrl}" style="color: inherit; text-decoration: underline;" target="_blank">Click here to open your dashboard</a>`,
                 'success'
             );
         }
     }
+
 
     /**
      * Set loading state for login form
