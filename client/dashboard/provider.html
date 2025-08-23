@@ -1,14 +1,18 @@
 <!-- client/dashboard/provider.html -->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Provider Dashboard - HealthSecure Portal</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <link rel="stylesheet" href="../assets/css/dashboard.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏥</text></svg>">
+    <script src="../assets/js/charts.js"></script>
 </head>
+
 <body>
     <!-- Navigation Header -->
     <header class="dashboard-header">
@@ -26,21 +30,21 @@
             <nav class="main-nav">
                 <ul class="nav-links">
                     <li><a href="#overview" class="nav-link active" data-section="overview">
-                        <i class="fas fa-home"></i>Overview
-                    </a></li>
+                            <i class="fas fa-home"></i>Overview
+                        </a></li>
                     <li><a href="#patients" class="nav-link" data-section="patients">
-                        <i class="fas fa-users"></i>My Patients
-                    </a></li>
+                            <i class="fas fa-users"></i>My Patients
+                        </a></li>
                     <li><a href="#appointments" class="nav-link" data-section="appointments">
-                        <i class="fas fa-calendar-alt"></i>Appointments
-                    </a></li>
+                            <i class="fas fa-calendar-alt"></i>Appointments
+                        </a></li>
                     <li><a href="#consultations" class="nav-link" data-section="consultations">
-                        <i class="fas fa-stethoscope"></i>Consultations
-                    </a></li>
+                            <i class="fas fa-stethoscope"></i>Consultations
+                        </a></li>
                     <li><a href="#analytics" class="nav-link" data-section="analytics">
-                        <i class="fas fa-chart-line"></i>Analytics
-                        <span class="notification-badge">2</span>
-                    </a></li>
+                            <i class="fas fa-chart-line"></i>Analytics
+                            <span class="notification-badge">2</span>
+                        </a></li>
                 </ul>
             </nav>
 
@@ -51,8 +55,8 @@
                 </button>
                 <div class="user-menu">
                     <button class="user-avatar" onclick="toggleUserMenu()">
-                        <img src="../assets/images/dr-avatar.jpg" alt="Dr. Avatar" 
-                             onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <img src="../assets/images/dr-avatar.jpg" alt="Dr. Avatar"
+                            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
                         <div class="avatar-fallback">
                             <i class="fas fa-user-md"></i>
                         </div>
@@ -405,6 +409,8 @@
         </section>
 
         <!-- Analytics Section -->
+
+        <!-- Replace the existing analytics section in provider.html with this: -->
         <section class="dashboard-section" id="analytics">
             <div class="section-header">
                 <h2>Practice Analytics</h2>
@@ -420,9 +426,9 @@
                     <div class="analytics-card">
                         <h4>Patient Volume</h4>
                         <div class="analytics-chart">
-                            <div class="chart-placeholder">
+                            <div class="chart-placeholder" style="height: 300px;">
                                 <i class="fas fa-chart-line"></i>
-                                <p>Chart visualization would appear here</p>
+                                <p>Loading patient volume chart...</p>
                             </div>
                         </div>
                     </div>
@@ -441,11 +447,80 @@
                                 <span class="metric-label">Urgent Care</span>
                                 <span class="metric-value">10%</span>
                             </div>
+                            <!-- Chart will be added here automatically -->
                         </div>
                     </div>
                 </div>
             </div>
         </section>
+
+        <!--
+4. ADD Chart.js CSS for better styling (optional):
+   Add this to your dashboard CSS files or in a <style> tag:
+-->
+
+        <style>
+            .analytics-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+                gap: 2rem;
+                margin-bottom: 2rem;
+            }
+
+            .analytics-card {
+                background: white;
+                padding: 1.5rem;
+                border-radius: var(--radius-lg);
+                border: 1px solid var(--border-color);
+                box-shadow: var(--shadow-sm);
+            }
+
+            .analytics-card h4 {
+                margin-bottom: 1rem;
+                color: var(--text-primary);
+                font-size: 1.1rem;
+                font-weight: 600;
+            }
+
+            .analytics-chart {
+                position: relative;
+                height: 300px;
+            }
+
+            .chart-placeholder {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                height: 100%;
+                background: var(--bg-secondary);
+                border: 2px dashed var(--border-color);
+                border-radius: var(--radius-md);
+                color: var(--text-secondary);
+            }
+
+            .chart-placeholder i {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+                opacity: 0.5;
+            }
+
+            .chart-placeholder p {
+                margin: 0;
+                font-size: 0.9rem;
+            }
+
+            @media (max-width: 768px) {
+                .analytics-grid {
+                    grid-template-columns: 1fr;
+                    gap: 1rem;
+                }
+
+                .analytics-chart {
+                    height: 250px;
+                }
+            }
+        </style>
     </main>
 
     <!-- Notification Panel -->
@@ -496,4 +571,5 @@
         });
     </script>
 </body>
+
 </html>
