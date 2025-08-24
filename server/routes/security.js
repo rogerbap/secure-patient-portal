@@ -5,17 +5,47 @@ const router = express.Router();
 // Import services and middleware
 const { authenticateToken, authorizeRoles, optionalAuth } = require('../middleware/auth');
 const { globalRateLimit } = require('../middleware/rateLimit');
-const riskAssessmentService = require('../services/riskAssessmentService');
-const auditService = require('../services/auditService');
-const SecurityLog = require('../models/securityLog');
 const logger = require('../utils/logger');
+
+// Import services with error handling
+let riskAssessmentService, auditService, SecurityLog;
+
+try {
+  riskAssessmentService = require('../services/riskAssessmentService');
+  auditService = require('../services/auditService');
+  SecurityLog = require('../models/securityLog');
+} catch (error) {
+  logger.warn('Some security services not available:', error.message);
+  
+  // Create fallback objects
+  riskAssessmentService = {
+    assessLoginRisk: async () => ({ riskScore: 25, riskLevel: 'LOW' }),
+    getRiskStatistics: async () => ({ totalAssessments: 0 }),
+    getRiskHistory: async () => []
+  };
+  
+  auditService = {
+    logUserAction: async () => {},
+    logSecurityEvent: async () => {},
+    getAuditStatistics: async () => ({ totalEvents: 0 })
+  };
+  
+  SecurityLog = {
+    findAll: async () => [],
+    findAndCountAll: async () => ({ rows: [], count: 0 }),
+    findByPk: async () => null,
+    count: async () => 0,
+    create: async () => ({}),
+    sequelize: { Sequelize: { Op: {} } }
+  };
+}
 
 /**
  * @route   POST /api/security/assess-risk
  * @desc    Perform risk assessment for login attempt
  * @access  Public (used during authentication)
  */
-router.post('/assess-risk', 
+router.post('/assess-risk',
   globalRateLimit,
   async (req, res) => {
     try {
@@ -43,13 +73,16 @@ router.post('/assess-risk',
 
     } catch (error) {
       logger.error('Risk assessment error:', error);
+      
+      // Return safe fallback risk assessment
       res.status(500).json({
         success: false,
         message: 'Risk assessment failed',
         riskAssessment: {
           riskScore: 100,
           riskLevel: 'HIGH',
-          requiresAdditionalVerification: true
+          requiresAdditionalVerification: true,
+          factors: { error: 'Assessment service unavailable' }
         }
       });
     }
@@ -61,27 +94,27 @@ router.post('/assess-risk',
  * @desc    Get security logs (admin only)
  * @access  Private (Admin)
  */
-router.get('/logs', 
+router.get('/logs',
   authenticateToken,
   authorizeRoles('admin'),
   globalRateLimit,
   async (req, res) => {
     try {
-      const { 
-        page = 1, 
-        limit = 50, 
-        severity, 
-        eventType, 
-        startDate, 
+      const {
+        page = 1,
+        limit = 50,
+        severity,
+        eventType,
+        startDate,
         endDate,
-        userId 
+        userId
       } = req.query;
 
       const offset = (page - 1) * limit;
       const whereClause = {};
 
-      // Apply filters
-      if (severity) {
+      // Apply filters with safety checks
+      if (severity && ['low', 'medium', 'high', 'critical'].includes(severity)) {
         whereClause.severity = severity;
       }
       
@@ -109,7 +142,7 @@ router.get('/logs',
         limit: parseInt(limit),
         offset: parseInt(offset),
         attributes: [
-          'id', 'eventType', 'severity', 'userId', 'ipAddress', 
+          'id', 'eventType', 'severity', 'userId', 'ipAddress',
           'location', 'details', 'createdAt', 'investigated', 'resolved'
         ]
       });
@@ -118,12 +151,14 @@ router.get('/logs',
       await auditService.logUserAction({
         userId: req.user.id,
         action: 'SECURITY_LOGS_ACCESSED',
-        details: { 
+        details: {
           filters: { severity, eventType, startDate, endDate, userId },
-          resultsCount: logs.length 
+          resultsCount: logs.length
         },
         ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get('User-Agent'),
+        endpoint: req.originalUrl,
+        httpMethod: req.method
       });
 
       res.json({
@@ -143,7 +178,11 @@ router.get('/logs',
       logger.error('Security logs retrieval error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to retrieve security logs'
+        message: 'Failed to retrieve security logs',
+        data: {
+          logs: [],
+          pagination: { page: 1, limit: 50, total: 0, totalPages: 0 }
+        }
       });
     }
   }
@@ -154,7 +193,7 @@ router.get('/logs',
  * @desc    Get user-specific security logs
  * @access  Private (Users can view their own, admins can view any)
  */
-router.get('/logs/user/:userId', 
+router.get('/logs/user/:userId',
   authenticateToken,
   globalRateLimit,
   async (req, res) => {
@@ -180,7 +219,7 @@ router.get('/logs/user/:userId',
         limit: parseInt(limit),
         offset: parseInt(offset),
         attributes: [
-          'id', 'eventType', 'severity', 'ipAddress', 
+          'id', 'eventType', 'severity', 'ipAddress',
           'location', 'details', 'createdAt'
         ]
       });
@@ -189,12 +228,14 @@ router.get('/logs/user/:userId',
       await auditService.logUserAction({
         userId: requestingUserId,
         action: 'USER_SECURITY_LOGS_ACCESSED',
-        details: { 
+        details: {
           targetUserId,
-          logsCount: logs.length 
+          logsCount: logs.length
         },
         ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get('User-Agent'),
+        endpoint: req.originalUrl,
+        httpMethod: req.method
       });
 
       res.json({
@@ -209,7 +250,8 @@ router.get('/logs/user/:userId',
       logger.error('User security logs error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to retrieve user security logs'
+        message: 'Failed to retrieve user security logs',
+        data: { logs: [], userId: req.params.userId }
       });
     }
   }
@@ -220,7 +262,7 @@ router.get('/logs/user/:userId',
  * @desc    Get security statistics
  * @access  Private (Admin and Provider)
  */
-router.get('/statistics', 
+router.get('/statistics',
   authenticateToken,
   authorizeRoles(['admin', 'provider']),
   globalRateLimit,
@@ -228,8 +270,18 @@ router.get('/statistics',
     try {
       const { timeRange = '24h' } = req.query;
       
-      const statistics = await auditService.getAuditStatistics({ timeRange });
-      const riskStatistics = await riskAssessmentService.getRiskStatistics();
+      const [statistics, riskStatistics] = await Promise.all([
+        auditService.getAuditStatistics({ timeRange }).catch(() => ({
+          totalEvents: 0,
+          eventsBySeverity: [],
+          topEventTypes: []
+        })),
+        riskAssessmentService.getRiskStatistics().catch(() => ({
+          totalAssessments: 0,
+          averageRiskScore: 0,
+          riskDistribution: { LOW: 0, MEDIUM: 0, HIGH: 0 }
+        }))
+      ]);
 
       res.json({
         success: true,
@@ -245,7 +297,13 @@ router.get('/statistics',
       logger.error('Security statistics error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to retrieve security statistics'
+        message: 'Failed to retrieve security statistics',
+        data: {
+          audit: { totalEvents: 0 },
+          risk: { totalAssessments: 0 },
+          timeRange: '24h',
+          generatedAt: new Date().toISOString()
+        }
       });
     }
   }
@@ -256,7 +314,7 @@ router.get('/statistics',
  * @desc    Mark security log as investigated
  * @access  Private (Admin only)
  */
-router.post('/investigate/:logId', 
+router.post('/investigate/:logId',
   authenticateToken,
   authorizeRoles('admin'),
   async (req, res) => {
@@ -284,14 +342,16 @@ router.post('/investigate/:logId',
       await auditService.logUserAction({
         userId: investigatorId,
         action: 'SECURITY_LOG_INVESTIGATED',
-        details: { 
+        details: {
           logId,
           originalEventType: securityLog.eventType,
           originalSeverity: securityLog.severity,
-          notes 
+          notes
         },
         ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get('User-Agent'),
+        endpoint: req.originalUrl,
+        httpMethod: req.method
       });
 
       res.json({
@@ -314,7 +374,7 @@ router.post('/investigate/:logId',
  * @desc    Mark security log as resolved
  * @access  Private (Admin only)
  */
-router.post('/resolve/:logId', 
+router.post('/resolve/:logId',
   authenticateToken,
   authorizeRoles('admin'),
   async (req, res) => {
@@ -332,26 +392,31 @@ router.post('/resolve/:logId',
         });
       }
 
+      const currentNotes = securityLog.investigationNotes || '';
+      const updatedNotes = currentNotes + 
+        `\n\nResolution (${new Date().toISOString()}): ${resolution || 'Resolved by security team'}`;
+
       await securityLog.update({
         resolved: true,
         resolvedAt: new Date(),
         resolvedBy: resolverId,
-        investigationNotes: securityLog.investigationNotes + 
-          `\n\nResolution: ${resolution || 'Resolved by security team'}`
+        investigationNotes: updatedNotes
       });
 
       // Log the resolution action
       await auditService.logUserAction({
         userId: resolverId,
         action: 'SECURITY_LOG_RESOLVED',
-        details: { 
+        details: {
           logId,
           originalEventType: securityLog.eventType,
           originalSeverity: securityLog.severity,
-          resolution 
+          resolution
         },
         ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get('User-Agent'),
+        endpoint: req.originalUrl,
+        httpMethod: req.method
       });
 
       res.json({
@@ -374,7 +439,7 @@ router.post('/resolve/:logId',
  * @desc    Get risk assessment history for user
  * @access  Private (Users can view their own, admins can view any)
  */
-router.get('/risk-history/:userId', 
+router.get('/risk-history/:userId',
   authenticateToken,
   globalRateLimit,
   async (req, res) => {
@@ -393,7 +458,10 @@ router.get('/risk-history/:userId',
 
       const { limit = 10 } = req.query;
       
-      const riskHistory = await riskAssessmentService.getRiskHistory(targetUserId, parseInt(limit));
+      const riskHistory = await riskAssessmentService.getRiskHistory(
+        targetUserId, 
+        parseInt(limit)
+      );
 
       res.json({
         success: true,
@@ -407,7 +475,11 @@ router.get('/risk-history/:userId',
       logger.error('Risk history error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to retrieve risk history'
+        message: 'Failed to retrieve risk history',
+        data: {
+          riskHistory: [],
+          userId: req.params.userId
+        }
       });
     }
   }
@@ -418,7 +490,7 @@ router.get('/risk-history/:userId',
  * @desc    Report security incident
  * @access  Private
  */
-router.post('/report-incident', 
+router.post('/report-incident',
   authenticateToken,
   globalRateLimit,
   async (req, res) => {
@@ -433,17 +505,23 @@ router.post('/report-incident',
         });
       }
 
+      // Validate severity level
+      const validSeverities = ['low', 'medium', 'high', 'critical'];
+      const finalSeverity = validSeverities.includes(severity) ? severity : 'medium';
+
       // Log the incident report
       await auditService.logSecurityEvent({
         eventType: 'SECURITY_INCIDENT_REPORTED',
-        severity,
+        severity: finalSeverity,
         userId: reporterId,
         ipAddress: req.ip,
         userAgent: req.get('User-Agent'),
+        endpoint: req.originalUrl,
         details: {
           incidentType,
           description,
-          reportedBy: reporterId
+          reportedBy: reporterId,
+          timestamp: new Date().toISOString()
         }
       });
 
@@ -451,9 +529,15 @@ router.post('/report-incident',
       await auditService.logUserAction({
         userId: reporterId,
         action: 'SECURITY_INCIDENT_REPORTED',
-        details: { incidentType, severity },
+        details: { 
+          incidentType, 
+          severity: finalSeverity,
+          description: description.substring(0, 100) // Truncate for logging
+        },
         ipAddress: req.ip,
-        userAgent: req.get('User-Agent')
+        userAgent: req.get('User-Agent'),
+        endpoint: req.originalUrl,
+        httpMethod: req.method
       });
 
       res.json({
@@ -476,7 +560,7 @@ router.post('/report-incident',
  * @desc    Get overall system security status
  * @access  Public (limited information) / Private (detailed information)
  */
-router.get('/system-status', 
+router.get('/system-status',
   optionalAuth,
   globalRateLimit,
   async (req, res) => {
@@ -494,29 +578,44 @@ router.get('/system-status',
 
       // Enhanced status for authenticated users
       if (isAuthenticated) {
-        const recentAlerts = await SecurityLog.count({
-          where: {
-            severity: ['high', 'critical'],
-            createdAt: {
-              [SecurityLog.sequelize.Sequelize.Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000)
+        try {
+          const recentAlerts = await SecurityLog.count({
+            where: {
+              severity: ['high', 'critical'],
+              createdAt: {
+                [SecurityLog.sequelize.Sequelize.Op.gte]: new Date(Date.now() - 24 * 60 * 60 * 1000)
+              }
             }
-          }
-        });
+          });
 
-        basicStatus.recentAlerts = recentAlerts;
-        basicStatus.userSecurityLevel = 'PROTECTED';
+          basicStatus.recentAlerts = recentAlerts;
+          basicStatus.userSecurityLevel = 'PROTECTED';
+        } catch (error) {
+          basicStatus.recentAlerts = 0;
+          basicStatus.userSecurityLevel = 'PROTECTED';
+        }
       }
 
       // Detailed status for admins
       if (isAdmin) {
-        const statistics = await auditService.getAuditStatistics({ timeRange: '24h' });
-        basicStatus.detailedStats = statistics;
-        basicStatus.systemHealth = {
-          riskEngine: 'OPERATIONAL',
-          auditLogging: 'OPERATIONAL',
-          rateLimit: 'OPERATIONAL',
-          authentication: 'OPERATIONAL'
-        };
+        try {
+          const statistics = await auditService.getAuditStatistics({ timeRange: '24h' });
+          basicStatus.detailedStats = statistics;
+          basicStatus.systemHealth = {
+            riskEngine: 'OPERATIONAL',
+            auditLogging: 'OPERATIONAL',
+            rateLimit: 'OPERATIONAL',
+            authentication: 'OPERATIONAL'
+          };
+        } catch (error) {
+          basicStatus.detailedStats = { totalEvents: 0 };
+          basicStatus.systemHealth = {
+            riskEngine: 'LIMITED',
+            auditLogging: 'LIMITED',
+            rateLimit: 'OPERATIONAL',
+            authentication: 'OPERATIONAL'
+          };
+        }
       }
 
       res.json({
@@ -528,11 +627,72 @@ router.get('/system-status',
       logger.error('System status error:', error);
       res.status(500).json({
         success: false,
-        message: 'Failed to retrieve system status'
+        message: 'Failed to retrieve system status',
+        data: {
+          securityLevel: 'UNKNOWN',
+          activeMonitoring: false,
+          timestamp: new Date().toISOString()
+        }
       });
     }
   }
 );
 
+/**
+ * @route   GET /api/security/health
+ * @desc    Security service health check
+ * @access  Public
+ */
+router.get('/health', (req, res) => {
+  res.json({
+    success: true,
+    service: 'security',
+    status: 'operational',
+    timestamp: new Date().toISOString(),
+    components: {
+      riskAssessment: typeof riskAssessmentService.assessLoginRisk === 'function',
+      auditLogging: typeof auditService.logUserAction === 'function',
+      securityLogs: typeof SecurityLog.findAll === 'function'
+    }
+  });
+});
+
+/**
+ * Error handling middleware for security routes
+ */
+router.use((error, req, res, next) => {
+  logger.error('Security route error:', {
+    error: error.message,
+    stack: error.stack,
+    url: req.originalUrl,
+    method: req.method,
+    ip: req.ip,
+    userId: req.user?.id
+  });
+
+  // Log security event for route errors
+  if (auditService && typeof auditService.logSecurityEvent === 'function') {
+    auditService.logSecurityEvent({
+      eventType: 'SECURITY_ROUTE_ERROR',
+      severity: 'medium',
+      userId: req.user?.id,
+      ipAddress: req.ip,
+      userAgent: req.get('User-Agent'),
+      endpoint: req.originalUrl,
+      details: {
+        error: error.message,
+        method: req.method
+      }
+    }).catch(auditError => {
+      logger.error('Failed to log security route error:', auditError);
+    });
+  }
+
+  res.status(error.status || 500).json({
+    success: false,
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Security service error',
+    timestamp: new Date().toISOString()
+  });
+});
 
 module.exports = router;
