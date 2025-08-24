@@ -1,7 +1,7 @@
-//client/assets/js/charts.js - NEW FILE
+//client/assets/js/charts.js - UPDATED VERSION
 /**
  * Chart Implementation for HealthSecure Portal
- * Provides interactive charts for analytics across all dashboard types
+ * FIXED: Better admin dashboard detection and chart placement
  */
 
 class ChartManager {
@@ -29,7 +29,6 @@ class ChartManager {
         }
 
         try {
-            // Load Chart.js from CDN
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js';
             script.onload = () => {
@@ -53,7 +52,6 @@ class ChartManager {
     init() {
         console.log('📊 Initializing Chart Manager...');
         
-        // Wait for DOM to be ready
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.setupCharts());
         } else {
@@ -66,18 +64,11 @@ class ChartManager {
      */
     setupCharts() {
         try {
-            // Determine which dashboard we're on
-            const currentPath = window.location.pathname;
+            // Wait a bit for DOM to be fully ready
+            setTimeout(() => {
+                this.detectAndSetupCharts();
+            }, 500);
             
-            if (currentPath.includes('admin')) {
-                this.setupAdminCharts();
-            } else if (currentPath.includes('provider')) {
-                this.setupProviderCharts();
-            } else if (currentPath.includes('patient')) {
-                this.setupPatientCharts();
-            }
-            
-            console.log('✅ Charts initialized successfully');
         } catch (error) {
             console.error('Failed to setup charts:', error);
             this.createFallbackCharts();
@@ -85,52 +76,108 @@ class ChartManager {
     }
 
     /**
+     * Detect dashboard type and setup appropriate charts
+     */
+    detectAndSetupCharts() {
+        const currentPath = window.location.pathname;
+        const title = document.title.toLowerCase();
+        
+        console.log(`📊 Detecting dashboard type - Path: ${currentPath}, Title: ${title}`);
+        
+        if (currentPath.includes('admin') || title.includes('admin')) {
+            console.log('📊 Setting up Admin charts...');
+            this.setupAdminCharts();
+        } else if (currentPath.includes('provider') || title.includes('provider')) {
+            console.log('📊 Setting up Provider charts...');
+            this.setupProviderCharts();
+        } else if (currentPath.includes('patient') || title.includes('patient')) {
+            console.log('📊 Setting up Patient charts...');
+            this.setupPatientCharts();
+        } else {
+            console.log('📊 Dashboard type unknown, trying all chart types...');
+            this.setupAdminCharts();
+            this.setupProviderCharts();
+            this.setupPatientCharts();
+        }
+    }
+
+    /**
      * Setup Admin Dashboard Charts
      */
     setupAdminCharts() {
-        // System Performance Chart
-        this.createSystemPerformanceChart();
+        console.log('🔧 Setting up admin charts...');
         
-        // Security Metrics Chart
-        this.createSecurityMetricsChart();
+        // Find all chart placeholders
+        const placeholders = document.querySelectorAll('.chart-placeholder');
+        console.log(`📊 Found ${placeholders.length} chart placeholders for admin`);
         
-        // User Activity Chart
-        this.createUserActivityChart();
-        
-        // System Health Chart
-        this.createSystemHealthChart();
+        placeholders.forEach((placeholder, index) => {
+            const parentCard = placeholder.closest('.analytics-card, .metric-card');
+            const cardTitle = parentCard ? parentCard.querySelector('h4')?.textContent?.toLowerCase() : '';
+            
+            console.log(`📊 Admin placeholder ${index}: "${cardTitle}"`);
+            
+            if (cardTitle.includes('performance') || cardTitle.includes('server')) {
+                this.createSystemPerformanceChart(placeholder);
+            } else if (cardTitle.includes('security') || cardTitle.includes('risk')) {
+                this.createSecurityMetricsChart(placeholder);
+            } else if (cardTitle.includes('activity') || cardTitle.includes('user')) {
+                this.createUserActivityChart(placeholder);
+            } else if (cardTitle.includes('health') || cardTitle.includes('radar')) {
+                this.createSystemHealthChart(placeholder);
+            } else {
+                // Default chart for unknown admin placeholders
+                this.createSystemPerformanceChart(placeholder);
+            }
+        });
     }
 
     /**
-     * Setup Provider Dashboard Charts
+     * Setup Provider Dashboard Charts  
      */
     setupProviderCharts() {
-        // Patient Volume Chart
-        this.createPatientVolumeChart();
+        console.log('🔧 Setting up provider charts...');
         
-        // Appointment Types Chart
-        this.createAppointmentTypesChart();
+        const placeholders = document.querySelectorAll('.chart-placeholder');
+        console.log(`📊 Found ${placeholders.length} chart placeholders for provider`);
         
-        // Monthly Activity Chart
-        this.createMonthlyActivityChart();
+        placeholders.forEach((placeholder, index) => {
+            const parentCard = placeholder.closest('.analytics-card');
+            const cardTitle = parentCard ? parentCard.querySelector('h4')?.textContent?.toLowerCase() : '';
+            
+            console.log(`📊 Provider placeholder ${index}: "${cardTitle}"`);
+            
+            if (cardTitle.includes('volume') || cardTitle.includes('patient')) {
+                this.createPatientVolumeChart(placeholder);
+            } else if (cardTitle.includes('appointment') || cardTitle.includes('types')) {
+                this.createAppointmentTypesChart(placeholder);
+            } else {
+                this.createPatientVolumeChart(placeholder);
+            }
+        });
+
+        // Also check for metrics sections that need charts
+        this.createAppointmentTypesChartInMetrics();
     }
 
     /**
-     * Setup Patient Dashboard Charts (if any)
+     * Setup Patient Dashboard Charts
      */
     setupPatientCharts() {
-        // Health Trends Chart (if container exists)
+        console.log('🔧 Setting up patient charts...');
         this.createHealthTrendsChart();
     }
 
     /**
-     * Create System Performance Chart (Admin)
+     * Create System Performance Chart
      */
-    createSystemPerformanceChart() {
-        const container = document.querySelector('.chart-placeholder');
-        if (!container) return;
+    createSystemPerformanceChart(container) {
+        if (!container) {
+            console.warn('⚠️ No container provided for system performance chart');
+            return;
+        }
 
-        const canvas = this.createCanvas('systemPerformanceChart');
+        const canvas = this.createCanvas('systemPerformanceChart_' + Date.now());
         container.innerHTML = '';
         container.appendChild(canvas);
 
@@ -166,7 +213,7 @@ class ChartManager {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'System Performance (Last 24 Hours)'
+                        text: 'System Performance (24 Hours)'
                     },
                     legend: {
                         position: 'bottom'
@@ -185,17 +232,20 @@ class ChartManager {
                 }
             }
         });
+
+        console.log('✅ System performance chart created');
     }
 
     /**
-     * Create Security Metrics Chart (Admin)
+     * Create Security Metrics Chart
      */
-    createSecurityMetricsChart() {
-        const containers = document.querySelectorAll('.analytics-chart');
-        if (containers.length < 2) return;
+    createSecurityMetricsChart(container) {
+        if (!container) {
+            console.warn('⚠️ No container provided for security metrics chart');
+            return;
+        }
 
-        const container = containers[1]; // Second chart container
-        const canvas = this.createCanvas('securityMetricsChart');
+        const canvas = this.createCanvas('securityMetricsChart_' + Date.now());
         container.innerHTML = '';
         container.appendChild(canvas);
 
@@ -231,24 +281,22 @@ class ChartManager {
                 }
             }
         });
+
+        console.log('✅ Security metrics chart created');
     }
 
     /**
-     * Create User Activity Chart (Admin)
+     * Create User Activity Chart
      */
-    createUserActivityChart() {
-        // Find analytics container
-        const analyticsCard = document.querySelector('.analytics-card');
-        if (!analyticsCard) return;
-
-        const canvas = this.createCanvas('userActivityChart');
-        
-        // Replace placeholder content
-        const placeholder = analyticsCard.querySelector('.chart-placeholder');
-        if (placeholder) {
-            placeholder.innerHTML = '';
-            placeholder.appendChild(canvas);
+    createUserActivityChart(container) {
+        if (!container) {
+            console.warn('⚠️ No container provided for user activity chart');
+            return;
         }
+
+        const canvas = this.createCanvas('userActivityChart_' + Date.now());
+        container.innerHTML = '';
+        container.appendChild(canvas);
 
         const ctx = canvas.getContext('2d');
         
@@ -289,7 +337,7 @@ class ChartManager {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'User Activity (Last 7 Days)'
+                        text: 'User Activity (7 Days)'
                     },
                     legend: {
                         position: 'bottom'
@@ -302,19 +350,22 @@ class ChartManager {
                 }
             }
         });
+
+        console.log('✅ User activity chart created');
     }
 
     /**
-     * Create System Health Chart (Admin)
+     * Create System Health Chart
      */
-    createSystemHealthChart() {
-        // Look for system metrics container
-        const systemContainer = document.querySelector('.system-metrics .metric-card .chart-placeholder');
-        if (!systemContainer) return;
+    createSystemHealthChart(container) {
+        if (!container) {
+            console.warn('⚠️ No container provided for system health chart');
+            return;
+        }
 
-        const canvas = this.createCanvas('systemHealthChart');
-        systemContainer.innerHTML = '';
-        systemContainer.appendChild(canvas);
+        const canvas = this.createCanvas('systemHealthChart_' + Date.now());
+        container.innerHTML = '';
+        container.appendChild(canvas);
 
         const ctx = canvas.getContext('2d');
         
@@ -323,7 +374,7 @@ class ChartManager {
             data: {
                 labels: ['API Response', 'Database', 'Security', 'Storage', 'Network', 'Memory'],
                 datasets: [{
-                    label: 'Current Status',
+                    label: 'Health Score',
                     data: [95, 98, 92, 88, 94, 85],
                     borderColor: this.chartColors.success,
                     backgroundColor: this.chartColors.success + '30',
@@ -338,7 +389,7 @@ class ChartManager {
                 plugins: {
                     title: {
                         display: true,
-                        text: 'System Health Score'
+                        text: 'System Health Overview'
                     }
                 },
                 scales: {
@@ -354,22 +405,25 @@ class ChartManager {
                 }
             }
         });
+
+        console.log('✅ System health chart created');
     }
 
     /**
-     * Create Patient Volume Chart (Provider)
+     * Create Patient Volume Chart
      */
-    createPatientVolumeChart() {
-        const container = document.querySelector('.analytics-chart .chart-placeholder');
-        if (!container) return;
+    createPatientVolumeChart(container) {
+        if (!container) {
+            console.warn('⚠️ No container provided for patient volume chart');
+            return;
+        }
 
-        const canvas = this.createCanvas('patientVolumeChart');
+        const canvas = this.createCanvas('patientVolumeChart_' + Date.now());
         container.innerHTML = '';
         container.appendChild(canvas);
 
         const ctx = canvas.getContext('2d');
         
-        // Generate monthly data
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'];
         const patientData = [180, 195, 210, 205, 225, 240];
         
@@ -403,25 +457,22 @@ class ChartManager {
                 }
             }
         });
+
+        console.log('✅ Patient volume chart created');
     }
 
     /**
-     * Create Appointment Types Chart (Provider)
+     * Create Appointment Types Chart
      */
-    createAppointmentTypesChart() {
-        const metricsContainer = document.querySelector('.analytics-metrics');
-        if (!metricsContainer) return;
+    createAppointmentTypesChart(container) {
+        if (!container) {
+            console.warn('⚠️ No container provided for appointment types chart');
+            return;
+        }
 
-        // Create a canvas for the chart
-        const chartDiv = document.createElement('div');
-        chartDiv.style.height = '200px';
-        chartDiv.style.marginTop = '1rem';
-        
-        const canvas = this.createCanvas('appointmentTypesChart');
-        chartDiv.appendChild(canvas);
-        
-        // Insert after the metrics
-        metricsContainer.parentNode.insertBefore(chartDiv, metricsContainer.nextSibling);
+        const canvas = this.createCanvas('appointmentTypesChart_' + Date.now());
+        container.innerHTML = '';
+        container.appendChild(canvas);
 
         const ctx = canvas.getContext('2d');
         
@@ -453,50 +504,48 @@ class ChartManager {
                 }
             }
         });
+
+        console.log('✅ Appointment types chart created');
     }
 
     /**
-     * Create Monthly Activity Chart (Provider)
+     * Create Appointment Types Chart in Metrics Section
      */
-    createMonthlyActivityChart() {
-        // This would go in the provider analytics section
-        const analyticsContainer = document.querySelector('.analytics-container');
-        if (!analyticsContainer) return;
+    createAppointmentTypesChartInMetrics() {
+        const metricsContainer = document.querySelector('.analytics-metrics');
+        if (!metricsContainer) return;
 
-        const chartContainer = document.createElement('div');
-        chartContainer.className = 'analytics-card';
-        chartContainer.style.marginTop = '2rem';
+        const chartDiv = document.createElement('div');
+        chartDiv.style.height = '200px';
+        chartDiv.style.marginTop = '1rem';
         
-        const canvas = this.createCanvas('monthlyActivityChart');
-        canvas.style.height = '300px';
+        const canvas = this.createCanvas('appointmentTypesMetricsChart');
+        chartDiv.appendChild(canvas);
         
-        chartContainer.innerHTML = '<h4>Monthly Activity Overview</h4>';
-        chartContainer.appendChild(canvas);
-        analyticsContainer.appendChild(chartContainer);
+        metricsContainer.parentNode.insertBefore(chartDiv, metricsContainer.nextSibling);
 
         const ctx = canvas.getContext('2d');
         
-        this.charts.monthlyActivity = new Chart(ctx, {
-            type: 'bar',
+        this.charts.appointmentTypesMetrics = new Chart(ctx, {
+            type: 'pie',
             data: {
-                labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                labels: ['Routine Checkups', 'Follow-ups', 'Urgent Care', 'Consultations'],
                 datasets: [{
-                    label: 'Appointments',
-                    data: [45, 52, 48, 61],
-                    backgroundColor: this.chartColors.primary + '80'
-                }, {
-                    label: 'Consultations',
-                    data: [12, 15, 18, 14],
-                    backgroundColor: this.chartColors.secondary + '80'
+                    data: [65, 25, 10, 8],
+                    backgroundColor: [
+                        this.chartColors.primary,
+                        this.chartColors.secondary,
+                        this.chartColors.warning,
+                        this.chartColors.info
+                    ]
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    title: {
-                        display: true,
-                        text: 'Weekly Activity This Month'
+                    legend: {
+                        position: 'bottom'
                     }
                 }
             }
@@ -507,7 +556,6 @@ class ChartManager {
      * Create Health Trends Chart (Patient)
      */
     createHealthTrendsChart() {
-        // Only create if we're on patient dashboard and have a suitable container
         const healthCard = document.querySelector('.health-summary');
         if (!healthCard) return;
 
@@ -571,7 +619,7 @@ class ChartManager {
         const placeholders = document.querySelectorAll('.chart-placeholder');
         placeholders.forEach(placeholder => {
             placeholder.innerHTML = `
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 200px; background: #f8fafc; border-radius: 8px; border: 2px dashed #cbd5e1;">
+                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: #f8fafc; border-radius: 8px; border: 2px dashed #cbd5e1;">
                     <i class="fas fa-chart-bar" style="font-size: 3rem; color: #94a3b8; margin-bottom: 1rem;"></i>
                     <p style="color: #64748b; text-align: center; margin: 0;">
                         <strong>Chart Unavailable</strong><br>
@@ -594,29 +642,16 @@ class ChartManager {
             }
         });
     }
-
-    /**
-     * Update chart data (for real-time updates)
-     */
-    updateChartData(chartName, newData) {
-        if (this.charts[chartName]) {
-            this.charts[chartName].data.datasets[0].data = newData;
-            this.charts[chartName].update();
-        }
-    }
 }
 
 // Initialize chart manager
 const chartManager = new ChartManager();
-
-// Make it globally available
 window.chartManager = chartManager;
 
-// Cleanup on page unload
 window.addEventListener('beforeunload', () => {
     if (window.chartManager) {
         window.chartManager.destroyAllCharts();
     }
 });
 
-console.log('📊 Chart system loaded successfully');
+console.log('📊 Enhanced Chart system loaded successfully');
