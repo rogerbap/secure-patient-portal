@@ -1,7 +1,9 @@
-//client/assets/js/dashboard.js - FIXED VERSION WITH CORRECTED API BASE URL DETECTION
+//client/assets/js/dashboard.js - FIXED VERSION WITH DROPDOWN FIX
 /**
  * HealthSecure Portal - Dashboard JavaScript
- * FIXED: Proper API base URL detection for localhost and production environments
+ * FIXED: Proper user dropdown functionality for production environments
+ * FIXED: Enhanced error handling and event delegation
+ * FIXED: Better DOM readiness checks and element validation
  */
 
 class DashboardManager {
@@ -16,6 +18,13 @@ class DashboardManager {
         this.sessionTimerInterval = null;
         this.sessionStartTime = Date.now();
         this.sessionDuration = 30 * 60 * 1000; // 30 minutes
+        
+        // FIXED: Bind methods to maintain context
+        this.toggleUserMenu = this.toggleUserMenu.bind(this);
+        this.toggleNotifications = this.toggleNotifications.bind(this);
+        this.handleDocumentClick = this.handleDocumentClick.bind(this);
+        this.handleNavigation = this.handleNavigation.bind(this);
+        this.logout = this.logout.bind(this);
         
         this.init();
     }
@@ -65,11 +74,27 @@ class DashboardManager {
         console.log('🏥 Dashboard Manager - Initializing...');
         console.log('🌐 API Base URL:', this.apiBaseUrl);
         
-        if (document.readyState === 'loading') {
-            document.addEventListener('DOMContentLoaded', () => this.onDOMReady());
-        } else {
+        // FIXED: Better DOM ready detection
+        this.waitForDOM().then(() => {
             this.onDOMReady();
-        }
+        }).catch(error => {
+            console.error('❌ DOM ready failed:', error);
+            // Fallback - try to initialize anyway
+            setTimeout(() => this.onDOMReady(), 1000);
+        });
+    }
+
+    /**
+     * FIXED: Better DOM ready detection
+     */
+    waitForDOM() {
+        return new Promise((resolve) => {
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', resolve, { once: true });
+            } else {
+                resolve();
+            }
+        });
     }
 
     /**
@@ -192,115 +217,268 @@ class DashboardManager {
     }
     
     /**
-     * Setup all event listeners
+     * FIXED: Setup all event listeners with better error handling
      */
     setupEventListeners() {
-        // Navigation links - FIXED to prevent logout on Overview click
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                
-                const section = link.dataset.section;
-                if (section) {
+        try {
+            // FIXED: Navigation links - prevent logout on Overview click
+            this.setupNavigationListeners();
+            
+            // FIXED: User menu toggle with better element detection
+            this.setupUserMenuListeners();
+
+            // FIXED: Notification toggle
+            this.setupNotificationListeners();
+
+            // FIXED: Logout button handling with better delegation
+            this.setupLogoutListeners();
+
+            // FIXED: Close dropdowns when clicking outside - with proper delegation
+            this.setupDocumentClickHandler();
+
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
+
+            // Session extension
+            this.setupSessionExtensionListener();
+
+            // Window events
+            window.addEventListener('beforeunload', () => this.handleBeforeUnload());
+            document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
+            
+            console.log('✅ Event listeners setup completed');
+        } catch (error) {
+            console.error('❌ Event listener setup failed:', error);
+        }
+    }
+
+    /**
+     * FIXED: Setup navigation event listeners
+     */
+    setupNavigationListeners() {
+        try {
+            // Use event delegation for navigation links
+            document.addEventListener('click', (e) => {
+                const navLink = e.target.closest('.nav-link');
+                if (navLink && navLink.dataset.section) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    
+                    const section = navLink.dataset.section;
                     console.log(`Navigation clicked: ${section}`);
                     this.handleNavigation(e);
                 }
             });
-        });
-
-        // User menu toggle
-        const userAvatar = document.querySelector('.user-avatar');
-        if (userAvatar) {
-            userAvatar.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleUserMenu();
-            });
+        } catch (error) {
+            console.error('❌ Navigation listener setup failed:', error);
         }
+    }
 
-        // Notification toggle
-        const notificationBtn = document.querySelector('.notifications');
-        if (notificationBtn) {
-            notificationBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.toggleNotifications();
-            });
-        }
-
-        // FIXED: Logout button handling
-        document.querySelectorAll('.logout, [onclick*="handleLogout"], [onclick*="logout"]').forEach(logoutBtn => {
-            // Remove any existing onclick handlers
-            logoutBtn.removeAttribute('onclick');
-            
-            logoutBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                console.log('Logout button clicked');
-                this.logout();
-            });
-        });
-
-        // FIXED: Prevent dropdown items from causing navigation issues
-        document.querySelectorAll('.dropdown-item').forEach(item => {
-            if (!item.classList.contains('logout')) {
-                item.addEventListener('click', (e) => {
+    /**
+     * FIXED: Setup user menu listeners with multiple fallback methods
+     */
+    setupUserMenuListeners() {
+        try {
+            // Method 1: Direct element event listener
+            const userAvatar = document.querySelector('.user-avatar');
+            if (userAvatar) {
+                console.log('✅ User avatar found, attaching click listener');
+                
+                // Remove any existing listeners
+                userAvatar.removeEventListener('click', this.toggleUserMenu);
+                
+                // Add new listener
+                userAvatar.addEventListener('click', (e) => {
                     e.preventDefault();
-                    console.log('Dropdown item clicked:', item.textContent);
-                    // Handle other dropdown actions here
+                    e.stopPropagation();
+                    console.log('🖱️ User avatar clicked via direct listener');
+                    this.toggleUserMenu();
+                });
+                
+                // Also add the onclick attribute as fallback
+                userAvatar.setAttribute('onclick', 'window.dashboardManager.toggleUserMenu(); return false;');
+            } else {
+                console.warn('⚠️ User avatar element not found');
+            }
+
+            // Method 2: Event delegation for user menu
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('.user-avatar')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🖱️ User avatar clicked via delegation');
+                    this.toggleUserMenu();
+                }
+            });
+
+            // Method 3: Setup global function fallback
+            window.toggleUserMenu = () => {
+                console.log('🖱️ User menu toggled via global function');
+                this.toggleUserMenu();
+            };
+            
+        } catch (error) {
+            console.error('❌ User menu listener setup failed:', error);
+        }
+    }
+
+    /**
+     * FIXED: Setup notification listeners
+     */
+    setupNotificationListeners() {
+        try {
+            const notificationBtn = document.querySelector('.notifications');
+            if (notificationBtn) {
+                notificationBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.toggleNotifications();
                 });
             }
-        });
 
-        // Close dropdowns when clicking outside
-        document.addEventListener('click', (e) => {
-            // Don't close if clicking on dropdown elements
-            if (!e.target.closest('.user-menu') && !e.target.closest('.notification-panel')) {
+            // Event delegation backup
+            document.addEventListener('click', (e) => {
+                if (e.target.closest('.notifications')) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.toggleNotifications();
+                }
+            });
+
+            // Global function
+            window.toggleNotifications = () => {
+                this.toggleNotifications();
+            };
+        } catch (error) {
+            console.error('❌ Notification listener setup failed:', error);
+        }
+    }
+
+    /**
+     * FIXED: Setup logout listeners with comprehensive delegation
+     */
+    setupLogoutListeners() {
+        try {
+            // Method 1: Find and bind logout elements directly
+            const logoutElements = document.querySelectorAll('.logout, [onclick*="handleLogout"], [onclick*="logout"]');
+            logoutElements.forEach(logoutBtn => {
+                // Remove any existing onclick handlers
+                logoutBtn.removeAttribute('onclick');
+                
+                // Remove existing listeners
+                logoutBtn.removeEventListener('click', this.logout);
+                
+                // Add new listener
+                logoutBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🚪 Logout button clicked (direct)');
+                    this.logout();
+                });
+            });
+
+            // Method 2: Event delegation for logout
+            document.addEventListener('click', (e) => {
+                const logoutElement = e.target.closest('.logout');
+                if (logoutElement) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🚪 Logout clicked via delegation');
+                    this.logout();
+                }
+            });
+
+            // Method 3: Global function fallback
+            window.handleLogout = () => {
+                console.log('🚪 Logout via global function');
+                this.logout();
+            };
+
+            console.log('✅ Logout listeners setup completed');
+        } catch (error) {
+            console.error('❌ Logout listener setup failed:', error);
+        }
+    }
+
+    /**
+     * FIXED: Setup session extension listener
+     */
+    setupSessionExtensionListener() {
+        try {
+            const extendBtn = document.querySelector('.extend-session-btn');
+            if (extendBtn) {
+                extendBtn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.extendSession();
+                });
+            }
+
+            // Global function
+            window.extendSession = () => {
+                this.extendSession();
+            };
+        } catch (error) {
+            console.error('❌ Session extension listener setup failed:', error);
+        }
+    }
+
+    /**
+     * FIXED: Setup document click handler to close dropdowns
+     */
+    setupDocumentClickHandler() {
+        try {
+            // Remove existing listener if any
+            document.removeEventListener('click', this.handleDocumentClick);
+            
+            // Add new listener
+            document.addEventListener('click', this.handleDocumentClick);
+        } catch (error) {
+            console.error('❌ Document click handler setup failed:', error);
+        }
+    }
+
+    /**
+     * FIXED: Handle document clicks to close dropdowns
+     */
+    handleDocumentClick(e) {
+        try {
+            // Don't close if clicking on dropdown elements or their children
+            const isUserMenuClick = e.target.closest('.user-menu') || e.target.closest('.user-dropdown');
+            const isNotificationClick = e.target.closest('.notification-panel') || e.target.closest('.notifications');
+            
+            if (!isUserMenuClick && !isNotificationClick) {
                 this.closeAllDropdowns();
             }
-        });
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', (e) => this.handleKeyboardShortcuts(e));
-
-        // Session extension
-        const extendBtn = document.querySelector('.extend-session-btn');
-        if (extendBtn) {
-            extendBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                this.extendSession();
-            });
+        } catch (error) {
+            console.error('❌ Document click handler error:', error);
         }
-
-        // Window events
-        window.addEventListener('beforeunload', () => this.handleBeforeUnload());
-        document.addEventListener('visibilitychange', () => this.handleVisibilityChange());
-        
-        console.log('✅ Event listeners setup completed');
     }
 
     // FIXED: Handle navigation between sections
     handleNavigation(event) {
-        event.preventDefault();
-        event.stopPropagation();
-        
-        const link = event.currentTarget;
-        const section = link.dataset.section;
-        
-        console.log(`Handling navigation to: ${section}`);
-        
-        if (section) {
-            // Don't navigate away from the page, just show the section
-            this.showSection(section);
-            this.updateActiveNavigation(link);
+        try {
+            event.preventDefault();
+            event.stopPropagation();
             
-            console.log(`📊 Navigation: ${this.currentSection} → ${section}`);
+            const link = event.currentTarget || event.target.closest('.nav-link');
+            const section = link?.dataset?.section;
+            
+            console.log(`Handling navigation to: ${section}`);
+            
+            if (section) {
+                // Don't navigate away from the page, just show the section
+                this.showSection(section);
+                this.updateActiveNavigation(link);
+                
+                console.log(`📊 Navigation: ${this.currentSection} → ${section}`);
+            }
+        } catch (error) {
+            console.error('❌ Navigation handling failed:', error);
         }
     }
 
-    // ENHANCED: Logout with better error handling
+    // FIXED: Enhanced logout with better error handling
     async logout() {
         try {
             console.log('🔄 Starting logout process...');
@@ -330,9 +508,16 @@ class DashboardManager {
             sessionStorage.removeItem('loginData');
             sessionStorage.removeItem('currentUserRole');
             
-            // Clear demo auth cookie
-            document.cookie = 'demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=localhost;';
-            document.cookie = 'demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;';
+            // Clear demo auth cookie with multiple approaches
+            const cookieOptions = [
+                'demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;',
+                'demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=localhost;',
+                `demoAuth=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT; domain=${window.location.hostname};`
+            ];
+            
+            cookieOptions.forEach(option => {
+                document.cookie = option;
+            });
             
             console.log('✅ Session data cleared');
             
@@ -349,19 +534,126 @@ class DashboardManager {
     }
 
     /**
+     * FIXED: Toggle user dropdown menu with better error handling
+     */
+    toggleUserMenu() {
+        try {
+            console.log('🔄 Toggling user menu, current state:', this.userDropdown);
+            
+            const dropdown = document.getElementById('userDropdown') || document.querySelector('.user-dropdown');
+            
+            if (!dropdown) {
+                console.error('❌ User dropdown element not found');
+                return;
+            }
+
+            this.userDropdown = !this.userDropdown;
+            
+            if (this.userDropdown) {
+                console.log('✅ Opening user dropdown');
+                dropdown.classList.add('show');
+                // Close notifications if open
+                this.notificationPanel = false;
+                this.hideNotifications();
+            } else {
+                console.log('✅ Closing user dropdown');
+                dropdown.classList.remove('show');
+            }
+            
+            console.log('✅ User menu toggled successfully, new state:', this.userDropdown);
+            
+        } catch (error) {
+            console.error('❌ Toggle user menu error:', error);
+        }
+    }
+
+    /**
+     * Toggle notifications panel
+     */
+    toggleNotifications() {
+        try {
+            const panel = document.getElementById('notificationPanel') || document.querySelector('.notification-panel');
+            
+            if (!panel) {
+                console.error('❌ Notification panel element not found');
+                return;
+            }
+
+            this.notificationPanel = !this.notificationPanel;
+            
+            if (this.notificationPanel) {
+                panel.classList.add('show');
+                this.userDropdown = false;
+                this.hideUserDropdown();
+                this.loadNotifications();
+            } else {
+                panel.classList.remove('show');
+            }
+        } catch (error) {
+            console.error('❌ Toggle notifications error:', error);
+        }
+    }
+
+    /**
+     * FIXED: Close all dropdown menus
+     */
+    closeAllDropdowns() {
+        try {
+            this.hideUserDropdown();
+            this.hideNotifications();
+        } catch (error) {
+            console.error('❌ Close dropdowns error:', error);
+        }
+    }
+
+    /**
+     * FIXED: Hide user dropdown
+     */
+    hideUserDropdown() {
+        try {
+            const dropdown = document.getElementById('userDropdown') || document.querySelector('.user-dropdown');
+            if (dropdown) {
+                dropdown.classList.remove('show');
+                this.userDropdown = false;
+            }
+        } catch (error) {
+            console.error('❌ Hide user dropdown error:', error);
+        }
+    }
+
+    /**
+     * FIXED: Hide notifications panel
+     */
+    hideNotifications() {
+        try {
+            const panel = document.getElementById('notificationPanel') || document.querySelector('.notification-panel');
+            if (panel) {
+                panel.classList.remove('show');
+                this.notificationPanel = false;
+            }
+        } catch (error) {
+            console.error('❌ Hide notifications error:', error);
+        }
+    }
+
+    /**
      * Show specific dashboard section
      */
     showSection(sectionName) {
-        document.querySelectorAll('.dashboard-section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        const targetSection = document.getElementById(sectionName);
-        if (targetSection) {
-            targetSection.classList.add('active');
-            this.currentSection = sectionName;
+        try {
+            document.querySelectorAll('.dashboard-section').forEach(section => {
+                section.classList.remove('active');
+            });
             
-            this.loadSectionData(sectionName);
+            const targetSection = document.getElementById(sectionName);
+            if (targetSection) {
+                targetSection.classList.add('active');
+                this.currentSection = sectionName;
+                
+                this.loadSectionData(sectionName);
+            }
+        } catch (error) {
+            console.error('❌ Show section error:', error);
         }
     }
 
@@ -369,11 +661,17 @@ class DashboardManager {
      * Update active navigation state
      */
     updateActiveNavigation(activeLink) {
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
-        });
-        
-        activeLink.classList.add('active');
+        try {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            if (activeLink) {
+                activeLink.classList.add('active');
+            }
+        } catch (error) {
+            console.error('❌ Update navigation error:', error);
+        }
     }
 
     /**
@@ -453,15 +751,19 @@ class DashboardManager {
      * Update overview UI with data
      */
     updateOverviewUI(data) {
-        // Update user name
-        const userNameEl = document.getElementById('patientName');
-        if (userNameEl && data.user) {
-            userNameEl.textContent = data.user.name?.split(' ')[0] || 'User';
-        }
+        try {
+            // Update user name
+            const userNameEl = document.getElementById('patientName');
+            if (userNameEl && data.user) {
+                userNameEl.textContent = data.user.name?.split(' ')[0] || 'User';
+            }
 
-        // Update stat counters
-        if (data.summary) {
-            this.updateStatCounters(data.summary);
+            // Update stat counters
+            if (data.summary) {
+                this.updateStatCounters(data.summary);
+            }
+        } catch (error) {
+            console.error('❌ Update overview UI error:', error);
         }
     }
 
@@ -469,42 +771,54 @@ class DashboardManager {
      * Update stat counters with animation
      */
     updateStatCounters(summary) {
-        const statCards = document.querySelectorAll('.stat-number');
-        
-        statCards.forEach(card => {
-            const target = parseInt(card.dataset.target) || 0;
-            this.animateCounter(card, target);
-        });
+        try {
+            const statCards = document.querySelectorAll('.stat-number');
+            
+            statCards.forEach(card => {
+                const target = parseInt(card.dataset.target) || 0;
+                this.animateCounter(card, target);
+            });
+        } catch (error) {
+            console.error('❌ Update stat counters error:', error);
+        }
     }
 
     /**
      * Animate counter to target value
      */
     animateCounter(element, target) {
-        let current = 0;
-        const increment = target / 50;
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                current = target;
-                clearInterval(timer);
-            }
-            element.textContent = Math.floor(current);
-        }, 40);
+        try {
+            let current = 0;
+            const increment = target / 50;
+            const timer = setInterval(() => {
+                current += increment;
+                if (current >= target) {
+                    current = target;
+                    clearInterval(timer);
+                }
+                element.textContent = Math.floor(current);
+            }, 40);
+        } catch (error) {
+            console.error('❌ Animate counter error:', error);
+        }
     }
 
     /**
      * Animate all counters on page load
      */
     animateCounters() {
-        const counters = document.querySelectorAll('.stat-number');
-        
-        counters.forEach(counter => {
-            const target = parseInt(counter.dataset.target) || 0;
-            setTimeout(() => {
-                this.animateCounter(counter, target);
-            }, 500);
-        });
+        try {
+            const counters = document.querySelectorAll('.stat-number');
+            
+            counters.forEach(counter => {
+                const target = parseInt(counter.dataset.target) || 0;
+                setTimeout(() => {
+                    this.animateCounter(counter, target);
+                }, 500);
+            });
+        } catch (error) {
+            console.error('❌ Animate counters error:', error);
+        }
     }
 
     /**
@@ -579,25 +893,29 @@ class DashboardManager {
      * Update user interface with user data
      */
     updateUserUI(userInfo) {
-        // Update user name in header
-        const userNameEl = document.getElementById('userName');
-        if (userNameEl) {
-            userNameEl.textContent = `${userInfo.firstName || 'User'} ${userInfo.lastName || ''}`.trim();
-        }
+        try {
+            // Update user name in header
+            const userNameEl = document.getElementById('userName');
+            if (userNameEl) {
+                userNameEl.textContent = `${userInfo.firstName || 'User'} ${userInfo.lastName || ''}`.trim();
+            }
 
-        // Update patient/provider name in welcome message
-        const welcomeNameEl = document.getElementById('patientName') || 
-                             document.getElementById('providerName') || 
-                             document.getElementById('adminName');
-        if (welcomeNameEl) {
-            welcomeNameEl.textContent = userInfo.firstName || 'User';
-        }
+            // Update patient/provider name in welcome message
+            const welcomeNameEl = document.getElementById('patientName') || 
+                                 document.getElementById('providerName') || 
+                                 document.getElementById('adminName');
+            if (welcomeNameEl) {
+                welcomeNameEl.textContent = userInfo.firstName || 'User';
+            }
 
-        // Update role badge
-        const roleBadge = document.querySelector('.role-badge');
-        if (roleBadge && userInfo.role) {
-            roleBadge.textContent = `${userInfo.role.charAt(0).toUpperCase() + userInfo.role.slice(1)} Portal`;
-            roleBadge.className = `role-badge ${userInfo.role}`;
+            // Update role badge
+            const roleBadge = document.querySelector('.role-badge');
+            if (roleBadge && userInfo.role) {
+                roleBadge.textContent = `${userInfo.role.charAt(0).toUpperCase() + userInfo.role.slice(1)} Portal`;
+                roleBadge.className = `role-badge ${userInfo.role}`;
+            }
+        } catch (error) {
+            console.error('❌ Update user UI error:', error);
         }
     }
 
@@ -648,60 +966,68 @@ class DashboardManager {
      * Session management - ENHANCED VERSION
      */
     startSessionTimer() {
-        if (this.sessionTimeout) {
-            clearTimeout(this.sessionTimeout);
-        }
-        if (this.sessionTimerInterval) {
-            clearInterval(this.sessionTimerInterval);
-        }
-
-        this.sessionStartTime = Date.now();
-        this.sessionWarningShown = false;
-
-        this.updateSessionTimerDisplay();
-        this.sessionTimerInterval = setInterval(() => {
-            this.updateSessionTimerDisplay();
-        }, 1000);
-
-        this.sessionTimeout = setTimeout(() => {
-            this.handleSessionTimeout();
-        }, this.sessionDuration);
-
-        const warningTime = 5 * 60 * 1000;
-        setTimeout(() => {
-            if (!this.sessionWarningShown) {
-                this.showSessionWarning();
+        try {
+            if (this.sessionTimeout) {
+                clearTimeout(this.sessionTimeout);
             }
-        }, this.sessionDuration - warningTime);
+            if (this.sessionTimerInterval) {
+                clearInterval(this.sessionTimerInterval);
+            }
 
-        console.log('✅ Session timer started');
+            this.sessionStartTime = Date.now();
+            this.sessionWarningShown = false;
+
+            this.updateSessionTimerDisplay();
+            this.sessionTimerInterval = setInterval(() => {
+                this.updateSessionTimerDisplay();
+            }, 1000);
+
+            this.sessionTimeout = setTimeout(() => {
+                this.handleSessionTimeout();
+            }, this.sessionDuration);
+
+            const warningTime = 5 * 60 * 1000;
+            setTimeout(() => {
+                if (!this.sessionWarningShown) {
+                    this.showSessionWarning();
+                }
+            }, this.sessionDuration - warningTime);
+
+            console.log('✅ Session timer started');
+        } catch (error) {
+            console.error('❌ Session timer error:', error);
+        }
     }
 
     /**
      * Update session timer display
      */
     updateSessionTimerDisplay() {
-        const timerEl = document.getElementById('sessionTimer');
-        if (!timerEl) return;
+        try {
+            const timerEl = document.getElementById('sessionTimer');
+            if (!timerEl) return;
 
-        const elapsed = Date.now() - this.sessionStartTime;
-        const remaining = Math.max(0, this.sessionDuration - elapsed);
-        
-        if (remaining <= 0) {
-            timerEl.textContent = 'Session expired';
-            timerEl.style.color = 'var(--danger-color)';
-            return;
-        }
+            const elapsed = Date.now() - this.sessionStartTime;
+            const remaining = Math.max(0, this.sessionDuration - elapsed);
+            
+            if (remaining <= 0) {
+                timerEl.textContent = 'Session expired';
+                timerEl.style.color = 'var(--danger-color)';
+                return;
+            }
 
-        const minutes = Math.floor(remaining / (1000 * 60));
-        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
-        
-        timerEl.textContent = `Session: ${minutes}m ${seconds}s remaining`;
-        
-        if (remaining < 5 * 60 * 1000) {
-            timerEl.style.color = 'var(--warning-color)';
-        } else {
-            timerEl.style.color = 'var(--text-secondary)';
+            const minutes = Math.floor(remaining / (1000 * 60));
+            const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
+            
+            timerEl.textContent = `Session: ${minutes}m ${seconds}s remaining`;
+            
+            if (remaining < 5 * 60 * 1000) {
+                timerEl.style.color = 'var(--warning-color)';
+            } else {
+                timerEl.style.color = 'var(--text-secondary)';
+            }
+        } catch (error) {
+            console.error('❌ Update session timer error:', error);
         }
     }
 
@@ -709,14 +1035,18 @@ class DashboardManager {
      * Show session warning
      */
     showSessionWarning() {
-        this.sessionWarningShown = true;
-        
-        const confirmed = confirm(
-            'Your session will expire in 5 minutes. Would you like to extend your session?'
-        );
-        
-        if (confirmed) {
-            this.extendSession();
+        try {
+            this.sessionWarningShown = true;
+            
+            const confirmed = confirm(
+                'Your session will expire in 5 minutes. Would you like to extend your session?'
+            );
+            
+            if (confirmed) {
+                this.extendSession();
+            }
+        } catch (error) {
+            console.error('❌ Session warning error:', error);
         }
     }
 
@@ -765,80 +1095,15 @@ class DashboardManager {
      * Handle session timeout
      */
     handleSessionTimeout() {
-        if (this.sessionTimerInterval) {
-            clearInterval(this.sessionTimerInterval);
-        }
-        
-        alert('Your session has expired. You will be redirected to the login page.');
-        this.logout();
-    }
-
-    /**
-     * Toggle user dropdown menu
-     */
-    toggleUserMenu() {
-        const dropdown = document.getElementById('userDropdown');
-        
-        if (dropdown) {
-            this.userDropdown = !this.userDropdown;
-            
-            if (this.userDropdown) {
-                dropdown.classList.add('show');
-                this.notificationPanel = false;
-                this.hideNotifications();
-            } else {
-                dropdown.classList.remove('show');
+        try {
+            if (this.sessionTimerInterval) {
+                clearInterval(this.sessionTimerInterval);
             }
-        }
-    }
-
-    /**
-     * Toggle notifications panel
-     */
-    toggleNotifications() {
-        const panel = document.getElementById('notificationPanel');
-        
-        if (panel) {
-            this.notificationPanel = !this.notificationPanel;
             
-            if (this.notificationPanel) {
-                panel.classList.add('show');
-                this.userDropdown = false;
-                this.hideUserDropdown();
-                this.loadNotifications();
-            } else {
-                panel.classList.remove('show');
-            }
-        }
-    }
-
-    /**
-     * Close all dropdown menus
-     */
-    closeAllDropdowns() {
-        this.hideUserDropdown();
-        this.hideNotifications();
-    }
-
-    /**
-     * Hide user dropdown
-     */
-    hideUserDropdown() {
-        const dropdown = document.getElementById('userDropdown');
-        if (dropdown) {
-            dropdown.classList.remove('show');
-            this.userDropdown = false;
-        }
-    }
-
-    /**
-     * Hide notifications panel
-     */
-    hideNotifications() {
-        const panel = document.getElementById('notificationPanel');
-        if (panel) {
-            panel.classList.remove('show');
-            this.notificationPanel = false;
+            alert('Your session has expired. You will be redirected to the login page.');
+            this.logout();
+        } catch (error) {
+            console.error('❌ Session timeout handling error:', error);
         }
     }
 
@@ -888,31 +1153,35 @@ class DashboardManager {
      * Update notifications UI
      */
     updateNotificationsUI(notifications) {
-        const notificationList = document.querySelector('.notification-list');
-        if (!notificationList) return;
+        try {
+            const notificationList = document.querySelector('.notification-list');
+            if (!notificationList) return;
 
-        if (notifications.length === 0) {
-            notificationList.innerHTML = `
-                <div class="text-center" style="padding: 2rem; color: var(--text-secondary);">
-                    <i class="fas fa-bell-slash" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>No notifications</p>
+            if (notifications.length === 0) {
+                notificationList.innerHTML = `
+                    <div class="text-center" style="padding: 2rem; color: var(--text-secondary);">
+                        <i class="fas fa-bell-slash" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                        <p>No notifications</p>
+                    </div>
+                `;
+                return;
+            }
+
+            notificationList.innerHTML = notifications.map(notification => `
+                <div class="notification-item ${notification.read ? '' : 'unread'}" data-id="${notification.id}">
+                    <div class="notification-icon ${notification.type}">
+                        <i class="fas fa-${this.getNotificationIcon(notification.type)}"></i>
+                    </div>
+                    <div class="notification-content">
+                        <div class="notification-title">${notification.title}</div>
+                        <div class="notification-message">${notification.message}</div>
+                        <div class="notification-time">${this.formatTimeAgo(notification.timestamp)}</div>
+                    </div>
                 </div>
-            `;
-            return;
+            `).join('');
+        } catch (error) {
+            console.error('❌ Update notifications UI error:', error);
         }
-
-        notificationList.innerHTML = notifications.map(notification => `
-            <div class="notification-item ${notification.read ? '' : 'unread'}" data-id="${notification.id}">
-                <div class="notification-icon ${notification.type}">
-                    <i class="fas fa-${this.getNotificationIcon(notification.type)}"></i>
-                </div>
-                <div class="notification-content">
-                    <div class="notification-title">${notification.title}</div>
-                    <div class="notification-message">${notification.message}</div>
-                    <div class="notification-time">${this.formatTimeAgo(notification.timestamp)}</div>
-                </div>
-            </div>
-        `).join('');
     }
 
     /**
@@ -933,43 +1202,51 @@ class DashboardManager {
      * Format timestamp to "time ago" format
      */
     formatTimeAgo(timestamp) {
-        const now = new Date();
-        const time = new Date(timestamp);
-        const diffInSeconds = Math.floor((now - time) / 1000);
+        try {
+            const now = new Date();
+            const time = new Date(timestamp);
+            const diffInSeconds = Math.floor((now - time) / 1000);
 
-        if (diffInSeconds < 60) return 'Just now';
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-        return `${Math.floor(diffInSeconds / 86400)} days ago`;
+            if (diffInSeconds < 60) return 'Just now';
+            if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
+            if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
+            return `${Math.floor(diffInSeconds / 86400)} days ago`;
+        } catch (error) {
+            return 'Unknown time';
+        }
     }
 
     /**
      * Handle keyboard shortcuts
      */
     handleKeyboardShortcuts(event) {
-        if (event.altKey) {
-            const keyToSection = {
-                '1': 'overview',
-                '2': 'appointments',
-                '3': 'records',
-                '4': 'messages',
-                '5': 'prescriptions'
-            };
+        try {
+            if (event.altKey) {
+                const keyToSection = {
+                    '1': 'overview',
+                    '2': 'appointments',
+                    '3': 'records',
+                    '4': 'messages',
+                    '5': 'prescriptions'
+                };
 
-            const section = keyToSection[event.key];
-            if (section) {
-                event.preventDefault();
-                this.showSection(section);
-                
-                const navLink = document.querySelector(`[data-section="${section}"]`);
-                if (navLink) {
-                    this.updateActiveNavigation(navLink);
+                const section = keyToSection[event.key];
+                if (section) {
+                    event.preventDefault();
+                    this.showSection(section);
+                    
+                    const navLink = document.querySelector(`[data-section="${section}"]`);
+                    if (navLink) {
+                        this.updateActiveNavigation(navLink);
+                    }
                 }
             }
-        }
 
-        if (event.key === 'Escape') {
-            this.closeAllDropdowns();
+            if (event.key === 'Escape') {
+                this.closeAllDropdowns();
+            }
+        } catch (error) {
+            console.error('❌ Keyboard shortcuts error:', error);
         }
     }
 
@@ -977,16 +1254,20 @@ class DashboardManager {
      * Handle visibility change (tab switching)
      */
     handleVisibilityChange() {
-        if (document.hidden) {
-            console.log('🔒 Dashboard hidden - Pausing updates');
-        } else {
-            console.log('👁️ Dashboard visible - Resuming updates');
-            const userInfo = this.getUserInfo();
-            if (!userInfo) {
-                this.checkAuthentication().catch(() => {
-                    this.redirectToLogin();
-                });
+        try {
+            if (document.hidden) {
+                console.log('🔒 Dashboard hidden - Pausing updates');
+            } else {
+                console.log('👁️ Dashboard visible - Resuming updates');
+                const userInfo = this.getUserInfo();
+                if (!userInfo) {
+                    this.checkAuthentication().catch(() => {
+                        this.redirectToLogin();
+                    });
+                }
             }
+        } catch (error) {
+            console.error('❌ Visibility change error:', error);
         }
     }
 
@@ -994,13 +1275,17 @@ class DashboardManager {
      * Handle before page unload
      */
     handleBeforeUnload() {
-        console.log('🔄 Dashboard unloading - Cleaning up');
-        
-        if (this.sessionTimeout) {
-            clearTimeout(this.sessionTimeout);
-        }
-        if (this.sessionTimerInterval) {
-            clearInterval(this.sessionTimerInterval);
+        try {
+            console.log('🔄 Dashboard unloading - Cleaning up');
+            
+            if (this.sessionTimeout) {
+                clearTimeout(this.sessionTimeout);
+            }
+            if (this.sessionTimerInterval) {
+                clearInterval(this.sessionTimerInterval);
+            }
+        } catch (error) {
+            console.error('❌ Before unload error:', error);
         }
     }
 
@@ -1008,44 +1293,50 @@ class DashboardManager {
      * Show notification message
      */
     showNotification(message, type = 'info') {
-        const notification = document.createElement('div');
-        notification.className = `notification-toast ${type}`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 
-                                  type === 'error' ? 'exclamation-circle' : 
-                                  'info-circle'}"></i>
-                <span>${message}</span>
-            </div>
-            <button class="close-notification">
-                <i class="fas fa-times"></i>
-            </button>
-        `;
+        try {
+            const notification = document.createElement('div');
+            notification.className = `notification-toast ${type}`;
+            notification.innerHTML = `
+                <div class="notification-content">
+                    <i class="fas fa-${type === 'success' ? 'check-circle' : 
+                                      type === 'error' ? 'exclamation-circle' : 
+                                      'info-circle'}"></i>
+                    <span>${message}</span>
+                </div>
+                <button class="close-notification">
+                    <i class="fas fa-times"></i>
+                </button>
+            `;
 
-        notification.style.cssText = `
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            background: var(--bg-primary);
-            border: 1px solid var(--border-color);
-            border-radius: var(--radius-md);
-            padding: 1rem;
-            box-shadow: var(--shadow-lg);
-            z-index: 1050;
-            max-width: 300px;
-            animation: slideInRight 0.3s ease-out;
-        `;
+            notification.style.cssText = `
+                position: fixed;
+                top: 1rem;
+                right: 1rem;
+                background: var(--bg-primary);
+                border: 1px solid var(--border-color);
+                border-radius: var(--radius-md);
+                padding: 1rem;
+                box-shadow: var(--shadow-lg);
+                z-index: 1050;
+                max-width: 300px;
+                animation: slideInRight 0.3s ease-out;
+            `;
 
-        document.body.appendChild(notification);
+            document.body.appendChild(notification);
 
-        setTimeout(() => {
-            if (notification.parentNode) {
-                notification.remove();
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 5000);
+
+            const closeBtn = notification.querySelector('.close-notification');
+            if (closeBtn) {
+                closeBtn.addEventListener('click', () => notification.remove());
             }
-        }, 5000);
-
-        const closeBtn = notification.querySelector('.close-notification');
-        closeBtn.addEventListener('click', () => notification.remove());
+        } catch (error) {
+            console.error('❌ Show notification error:', error);
+        }
     }
 
     /**
@@ -1059,37 +1350,43 @@ class DashboardManager {
      * FIXED: Redirect to login page - Enhanced to handle different environments
      */
     redirectToLogin() {
-        console.log('🔄 Redirecting to login...');
-        
-        if (this.sessionTimeout) {
-            clearTimeout(this.sessionTimeout);
-        }
-        if (this.sessionTimerInterval) {
-            clearInterval(this.sessionTimerInterval);
-        }
-        
-        // Clear authentication data
-        sessionStorage.removeItem('authToken');
-        sessionStorage.removeItem('userInfo');
-        sessionStorage.removeItem('loginData');
-        
-        // FIXED: Better redirect logic for different environments
-        const hostname = window.location.hostname;
-        const port = window.location.port;
-        
-        // For localhost development with separate frontend server
-        if (hostname === 'localhost' && port === '8080') {
-            // Redirect to frontend dev server root
-            window.location.href = 'http://localhost:8080/';
-        }
-        // For localhost development on same server
-        else if (hostname === 'localhost' && (port === '3000' || !port)) {
-            // Redirect to same server root
-            window.location.href = '/';
-        }
-        // For production environments
-        else {
-            // Redirect to root of current domain
+        try {
+            console.log('🔄 Redirecting to login...');
+            
+            if (this.sessionTimeout) {
+                clearTimeout(this.sessionTimeout);
+            }
+            if (this.sessionTimerInterval) {
+                clearInterval(this.sessionTimerInterval);
+            }
+            
+            // Clear authentication data
+            sessionStorage.removeItem('authToken');
+            sessionStorage.removeItem('userInfo');
+            sessionStorage.removeItem('loginData');
+            
+            // FIXED: Better redirect logic for different environments
+            const hostname = window.location.hostname;
+            const port = window.location.port;
+            
+            // For localhost development with separate frontend server
+            if (hostname === 'localhost' && port === '8080') {
+                // Redirect to frontend dev server root
+                window.location.href = 'http://localhost:8080/';
+            }
+            // For localhost development on same server
+            else if (hostname === 'localhost' && (port === '3000' || !port)) {
+                // Redirect to same server root
+                window.location.href = '/';
+            }
+            // For production environments
+            else {
+                // Redirect to root of current domain
+                window.location.href = '/';
+            }
+        } catch (error) {
+            console.error('❌ Redirect to login error:', error);
+            // Force redirect as fallback
             window.location.href = '/';
         }
     }
@@ -1114,39 +1411,61 @@ class DashboardManager {
     }
 }
 
-// Global functions for onclick handlers
+// FIXED: Global functions for onclick handlers with error handling
 function navigateToSection(sectionName) {
-    if (window.dashboardManager) {
-        window.dashboardManager.showSection(sectionName);
-        
-        const navLink = document.querySelector(`[data-section="${sectionName}"]`);
-        if (navLink) {
-            window.dashboardManager.updateActiveNavigation(navLink);
+    try {
+        if (window.dashboardManager) {
+            window.dashboardManager.showSection(sectionName);
+            
+            const navLink = document.querySelector(`[data-section="${sectionName}"]`);
+            if (navLink) {
+                window.dashboardManager.updateActiveNavigation(navLink);
+            }
         }
+    } catch (error) {
+        console.error('❌ Navigate to section error:', error);
     }
 }
 
 function toggleNotifications() {
-    if (window.dashboardManager) {
-        window.dashboardManager.toggleNotifications();
+    try {
+        if (window.dashboardManager) {
+            window.dashboardManager.toggleNotifications();
+        }
+    } catch (error) {
+        console.error('❌ Toggle notifications error:', error);
     }
 }
 
 function toggleUserMenu() {
-    if (window.dashboardManager) {
-        window.dashboardManager.toggleUserMenu();
+    try {
+        console.log('🔄 Global toggleUserMenu called');
+        if (window.dashboardManager) {
+            window.dashboardManager.toggleUserMenu();
+        }
+    } catch (error) {
+        console.error('❌ Toggle user menu error:', error);
     }
 }
 
 function extendSession() {
-    if (window.dashboardManager) {
-        window.dashboardManager.extendSession();
+    try {
+        if (window.dashboardManager) {
+            window.dashboardManager.extendSession();
+        }
+    } catch (error) {
+        console.error('❌ Extend session error:', error);
     }
 }
 
 function handleLogout() {
-    if (window.dashboardManager) {
-        window.dashboardManager.logout();
+    try {
+        console.log('🚪 Global handleLogout called');
+        if (window.dashboardManager) {
+            window.dashboardManager.logout();
+        }
+    } catch (error) {
+        console.error('❌ Handle logout error:', error);
     }
 }
 
@@ -1167,67 +1486,161 @@ function requestRefill() {
     alert('Request Refill functionality would be implemented here.');
 }
 
-// Initialize dashboard when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-    window.dashboardManager = new DashboardManager();
-});
+// FIXED: Initialize dashboard when DOM is ready with multiple methods
+function initializeDashboard() {
+    try {
+        console.log('🏥 Initializing dashboard manager...');
+        window.dashboardManager = new DashboardManager();
+        
+        // Ensure global functions are available
+        window.toggleUserMenu = toggleUserMenu;
+        window.toggleNotifications = toggleNotifications;
+        window.handleLogout = handleLogout;
+        window.extendSession = extendSession;
+        
+        console.log('✅ Dashboard manager initialized successfully');
+    } catch (error) {
+        console.error('❌ Dashboard initialization failed:', error);
+    }
+}
+
+// Multiple initialization methods for reliability
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initializeDashboard, { once: true });
+} else {
+    initializeDashboard();
+}
+
+// Backup initialization
+setTimeout(() => {
+    if (!window.dashboardManager) {
+        console.warn('⚠️ Dashboard manager not initialized, attempting backup initialization...');
+        initializeDashboard();
+    }
+}, 2000);
+
+// Another backup for production issues
+window.addEventListener('load', () => {
+    if (!window.dashboardManager) {
+        console.warn('⚠️ Dashboard manager still not initialized, final attempt...');
+        initializeDashboard();
+    }
+}, { once: true });
 
 console.log('🏥 Enhanced Dashboard system loaded successfully');
 
-// Add CSS for notification toast
-const style = document.createElement('style');
-style.textContent = `
-    .notification-toast {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 1rem;
-    }
-    
-    .notification-toast .notification-content {
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-    }
-    
-    .notification-toast.success {
-        border-left: 4px solid var(--success-color);
-    }
-    
-    .notification-toast.error {
-        border-left: 4px solid var(--danger-color);
-    }
-    
-    .notification-toast.info {
-        border-left: 4px solid var(--info-color);
-    }
-    
-    .close-notification {
-        background: none;
-        border: none;
-        color: var(--text-secondary);
-        cursor: pointer;
-        padding: 0.25rem;
-        border-radius: var(--radius-sm);
-        transition: var(--transition);
-    }
-    
-    .close-notification:hover {
-        color: var(--text-primary);
-        background: var(--bg-secondary);
-    }
-    
-    @keyframes slideInRight {
-        from {
+// Add CSS for notification toast if not already present
+if (!document.querySelector('style[data-dashboard-styles]')) {
+    const style = document.createElement('style');
+    style.setAttribute('data-dashboard-styles', 'true');
+    style.textContent = `
+        .notification-toast {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+        }
+        
+        .notification-toast .notification-content {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .notification-toast.success {
+            border-left: 4px solid var(--success-color);
+        }
+        
+        .notification-toast.error {
+            border-left: 4px solid var(--danger-color);
+        }
+        
+        .notification-toast.info {
+            border-left: 4px solid var(--info-color);
+        }
+        
+        .close-notification {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 0.25rem;
+            border-radius: var(--radius-sm);
+            transition: var(--transition);
+        }
+        
+        .close-notification:hover {
+            color: var(--text-primary);
+            background: var(--bg-secondary);
+        }
+        
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100%);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+        
+        /* FIXED: Ensure dropdown is properly styled and clickable */
+        .user-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.5rem;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            min-width: 200px;
             opacity: 0;
-            transform: translateX(100%);
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: var(--transition);
+            z-index: 1001;
+            pointer-events: none;
         }
-        to {
+        
+        .user-dropdown.show {
             opacity: 1;
-            transform: translateX(0);
+            visibility: visible;
+            transform: translateY(0);
+            pointer-events: auto;
         }
-    }
-`;
-document.head.appendChild(style);
+        
+        .dropdown-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            transition: var(--transition);
+            cursor: pointer;
+            border: none;
+            background: none;
+            width: 100%;
+            text-align: left;
+        }
+        
+        .dropdown-item:hover {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+        }
+        
+        .dropdown-item.logout {
+            color: var(--danger-color);
+            border-top: 1px solid var(--border-color);
+        }
+        
+        .dropdown-item.logout:hover {
+            background: rgba(239, 68, 68, 0.05);
+        }
+    `;
+    document.head.appendChild(style);
+}
 
-console.log('🏥 Enhanced Dashboard system loaded successfully');
+console.log('🏥 Enhanced Dashboard system with dropdown fix loaded successfully');
