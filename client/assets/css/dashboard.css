@@ -1,7 +1,7 @@
-/* client/assets/css/dashboard.css - FIXED VERSION */
+/* client/assets/css/dashboard.css */
 /**
  * HealthSecure Portal - Dashboard Styles
- * FIXED: Enhanced dropdown functionality and production compatibility
+ * Modern healthcare dashboard interface with role-based styling
  */
 
 /* CSS Variables */
@@ -58,7 +58,7 @@ body {
     overflow-x: hidden;
 }
 
-/* Dashboard Header - FIXED with higher z-index */
+/* Dashboard Header */
 .dashboard-header {
     position: fixed;
     top: 0;
@@ -218,10 +218,9 @@ body {
     border: 2px solid var(--bg-primary);
 }
 
-/* FIXED User Menu - Enhanced dropdown functionality */
+/* User Menu */
 .user-menu {
     position: relative;
-    z-index: 1002; /* Higher z-index for dropdown container */
 }
 
 .user-avatar {
@@ -235,18 +234,10 @@ body {
     border-radius: var(--radius-md);
     transition: var(--transition);
     color: var(--text-primary);
-    font-family: inherit;
-    font-size: inherit;
 }
 
 .user-avatar:hover {
     background: var(--bg-secondary);
-}
-
-.user-avatar:focus {
-    outline: none;
-    background: var(--bg-secondary);
-    box-shadow: 0 0 0 2px var(--primary-color);
 }
 
 .user-avatar img {
@@ -271,34 +262,29 @@ body {
 
 .user-name {
     font-weight: 500;
-    white-space: nowrap;
 }
 
-/* FIXED User Dropdown - Enhanced positioning and z-index */
 .user-dropdown {
     position: absolute;
-    top: calc(100% + 0.5rem);
+    top: 100%;
     right: 0;
+    margin-top: 0.5rem;
     background: var(--bg-primary);
     border: 1px solid var(--border-color);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-xl);
+    box-shadow: var(--shadow-lg);
     min-width: 200px;
-    max-width: 300px;
     opacity: 0;
     visibility: hidden;
     transform: translateY(-10px);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    z-index: 9999; /* Very high z-index to ensure it appears above everything */
-    pointer-events: none; /* Prevent interaction when hidden */
+    transition: var(--transition);
+    z-index: 1001;
 }
 
-/* FIXED Show state with proper pointer events */
 .user-dropdown.show {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
-    pointer-events: auto; /* Enable interaction when shown */
 }
 
 .dropdown-item {
@@ -309,22 +295,9 @@ body {
     color: var(--text-secondary);
     text-decoration: none;
     transition: var(--transition);
-    cursor: pointer;
-    border: none;
-    background: none;
-    width: 100%;
-    text-align: left;
-    font-family: inherit;
-    font-size: inherit;
 }
 
 .dropdown-item:hover {
-    background: var(--bg-secondary);
-    color: var(--text-primary);
-}
-
-.dropdown-item:focus {
-    outline: none;
     background: var(--bg-secondary);
     color: var(--text-primary);
 }
@@ -336,7 +309,6 @@ body {
 
 .dropdown-item.logout:hover {
     background: rgba(239, 68, 68, 0.05);
-    color: var(--danger-color);
 }
 
 .dropdown-divider {
@@ -429,7 +401,6 @@ body {
     cursor: pointer;
     transition: var(--transition);
     font-size: 0.875rem;
-    font-family: inherit;
 }
 
 .extend-session-btn:hover {
@@ -495,7 +466,6 @@ body {
     transition: var(--transition);
     text-decoration: none;
     font-size: 0.875rem;
-    font-family: inherit;
 }
 
 .primary-btn:hover {
@@ -517,7 +487,6 @@ body {
     transition: var(--transition);
     text-decoration: none;
     font-size: 0.875rem;
-    font-family: inherit;
 }
 
 .btn-secondary:hover {
@@ -539,7 +508,6 @@ body {
     transition: var(--transition);
     text-decoration: none;
     font-size: 0.875rem;
-    font-family: inherit;
 }
 
 .btn-outline:hover {
@@ -561,7 +529,6 @@ body {
     transition: var(--transition);
     text-decoration: none;
     font-size: 0.875rem;
-    font-family: inherit;
 }
 
 .btn-danger:hover {
@@ -727,7 +694,6 @@ body {
     font-weight: 500;
     font-size: 0.875rem;
     transition: var(--transition);
-    font-family: inherit;
 }
 
 .view-all-btn:hover {
@@ -797,7 +763,8 @@ body {
     gap: 0.125rem;
 }
 
-.activity-provider, .activity-time {
+.activity-provider,
+.activity-time {
     color: var(--text-secondary);
     font-size: 0.875rem;
 }
@@ -846,7 +813,6 @@ body {
     cursor: pointer;
     transition: var(--transition);
     text-align: center;
-    font-family: inherit;
 }
 
 .action-tile:hover {
@@ -922,7 +888,7 @@ body {
     font-size: 0.875rem;
 }
 
-/* FIXED Notification Panel - Enhanced z-index and positioning */
+/* Notification Panel */
 .notification-panel {
     position: fixed;
     top: var(--header-height);
@@ -933,7 +899,7 @@ body {
     border-left: 1px solid var(--border-color);
     box-shadow: var(--shadow-xl);
     transition: var(--transition);
-    z-index: 1001; /* Ensure it appears above content but below user dropdown */
+    z-index: 999;
     overflow-y: auto;
 }
 
@@ -948,9 +914,6 @@ body {
     padding: 1.5rem;
     border-bottom: 1px solid var(--border-color);
     background: var(--bg-secondary);
-    position: sticky;
-    top: 0;
-    z-index: 1;
 }
 
 .notification-header h3 {
@@ -967,7 +930,6 @@ body {
     padding: 0.5rem;
     border-radius: var(--radius-md);
     transition: var(--transition);
-    font-family: inherit;
 }
 
 .close-notifications:hover {
@@ -1018,16 +980,6 @@ body {
     color: var(--success-color);
 }
 
-.notification-icon.system {
-    background: rgba(107, 114, 128, 0.1);
-    color: var(--text-secondary);
-}
-
-.notification-icon.security {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--danger-color);
-}
-
 .notification-content {
     flex: 1;
 }
@@ -1050,40 +1002,6 @@ body {
     font-size: 0.75rem;
 }
 
-/* FIXED - Add overlay to close dropdowns when clicking outside */
-.dropdown-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1000;
-    background: transparent;
-    display: none;
-}
-
-.dropdown-overlay.show {
-    display: block;
-}
-
-/* Form Elements */
-.form-input {
-    width: 100%;
-    padding: 0.75rem 1rem;
-    border: 2px solid var(--border-color);
-    border-radius: var(--radius-md);
-    font-size: 1rem;
-    transition: var(--transition);
-    background: var(--bg-primary);
-    font-family: inherit;
-}
-
-.form-input:focus {
-    outline: none;
-    border-color: var(--primary-color);
-    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
-}
-
 /* Responsive Design */
 @media (max-width: 1200px) {
     .dashboard-grid {
@@ -1098,7 +1016,6 @@ body {
 @media (max-width: 768px) {
     .dashboard-main {
         padding: 1rem;
-        margin-top: var(--header-height);
     }
     
     .header-content {
@@ -1106,7 +1023,7 @@ body {
     }
     
     .main-nav ul {
-        display: none; /* Hide nav on mobile - implement hamburger menu */
+        display: none; /* Hide nav on mobile - would implement hamburger menu */
     }
     
     .stats-grid {
@@ -1132,16 +1049,6 @@ body {
         width: 100%;
         right: -100%;
     }
-    
-    /* FIXED - Better mobile dropdown positioning */
-    .user-dropdown {
-        position: fixed;
-        top: var(--header-height);
-        right: 1rem;
-        left: 1rem;
-        width: auto;
-        max-width: none;
-    }
 }
 
 @media (max-width: 480px) {
@@ -1165,18 +1072,6 @@ body {
     .user-name {
         display: none;
     }
-    
-    .brand-section {
-        gap: 1rem;
-    }
-    
-    .logo {
-        font-size: 1rem;
-    }
-    
-    .dashboard-main {
-        padding: 0.75rem;
-    }
 }
 
 /* Animation Classes */
@@ -1185,14 +1080,8 @@ body {
 }
 
 @keyframes countUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 /* Loading States */
@@ -1210,57 +1099,6 @@ body {
 @keyframes skeleton-loading {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
-}
-
-/* FIXED - Enhanced focus states for accessibility */
-.user-avatar:focus,
-.dropdown-item:focus,
-.nav-link:focus,
-.action-btn:focus,
-.primary-btn:focus,
-.btn-secondary:focus,
-.btn-outline:focus,
-.btn-danger:focus,
-.extend-session-btn:focus,
-.view-all-btn:focus,
-.close-notifications:focus,
-.action-tile:focus {
-    outline: 2px solid var(--primary-color);
-    outline-offset: 2px;
-}
-
-/* FIXED - High contrast mode improvements */
-@media (prefers-contrast: high) {
-    .user-dropdown {
-        border: 2px solid var(--text-primary);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-    }
-    
-    .dropdown-item:hover,
-    .dropdown-item:focus {
-        background: var(--text-primary);
-        color: var(--bg-primary);
-    }
-}
-
-/* FIXED - Reduced motion preferences */
-@media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        transition-duration: 0.01ms !important;
-    }
-    
-    .skeleton {
-        animation: none;
-        background: var(--bg-tertiary);
-    }
-    
-    .dashboard-section.active {
-        animation: none;
-    }
 }
 
 /* Utility Classes */
@@ -1297,13 +1135,14 @@ body {
 .mb-2 { margin-bottom: 0.5rem; }
 .mb-3 { margin-bottom: 0.75rem; }
 .mb-4 { margin-bottom: 1rem; }
+
 .mt-0 { margin-top: 0; }
 .mt-1 { margin-top: 0.25rem; }
 .mt-2 { margin-top: 0.5rem; }
 .mt-3 { margin-top: 0.75rem; }
 .mt-4 { margin-top: 1rem; }
 
-/* FIXED - Dark Mode Support */
+/* Dark Mode Support */
 @media (prefers-color-scheme: dark) {
     :root {
         --text-primary: #f9fafb;
@@ -1315,18 +1154,36 @@ body {
         --border-color: #374151;
         --border-light: #4b5563;
     }
-    
-    .user-dropdown {
-        background: var(--bg-primary);
-        border-color: var(--border-color);
-    }
-    
-    .dropdown-item:hover {
-        background: var(--bg-secondary);
+}
+
+/* High Contrast Mode */
+@media (prefers-contrast: high) {
+    :root {
+        --border-color: #000000;
+        --text-secondary: #000000;
+        --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+        --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+        --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
     }
 }
 
-/* FIXED - Print Styles */
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+    
+    .skeleton {
+        animation: none;
+        background: var(--bg-tertiary);
+    }
+}
+
+/* Print Styles */
 @media print {
     .dashboard-header,
     .notification-panel,
@@ -1334,8 +1191,7 @@ body {
     .primary-btn,
     .btn-secondary,
     .btn-outline,
-    .btn-danger,
-    .user-dropdown {
+    .btn-danger {
         display: none !important;
     }
     
@@ -1355,103 +1211,73 @@ body {
         margin-bottom: 1rem;
     }
 }
+    /**
+ * HealthSecure Portal - Dashboard Styles
+ * Modern healthcare dashboard interface with role-based styling
+ */
 
-/* FIXED - Additional Production Compatibility Styles */
-
-/* Ensure dropdowns work in all browsers */
-.user-dropdown,
-.notification-panel {
-    will-change: transform, opacity;
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
+/* CSS Variables */
+:root {
+    --primary-color: #2563eb;
+    --primary-dark: #1d4ed8;
+    --secondary-color: #10b981;
+    --danger-color: #ef4444;
+    --warning-color: #f59e0b;
+    --success-color: #10b981;
+    --info-color: #3b82f6;
+    
+    --text-primary: #111827;
+    --text-secondary: #6b7280;
+    --text-light: #9ca3af;
+    
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9fafb;
+    --bg-tertiary: #f3f4f6;
+    --bg-dark: #111827;
+    
+    --border-color: #e5e7eb;
+    --border-light: #f3f4f6;
+    
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+    
+    --radius-sm: 0.375rem;
+    --radius-md: 0.5rem;
+    --radius-lg: 0.75rem;
+    --radius-xl: 1rem;
+    
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-fast: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    --header-height: 70px;
+    --sidebar-width: 280px;
 }
 
-/* Fix for Safari and older browsers */
-.user-avatar,
-.dropdown-item,
-.action-tile {
-    -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    -moz-user-select: none;
-    -ms-user-select: none;
-    user-select: none;
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-/* Improve rendering performance */
-.dashboard-header,
-.user-dropdown,
-.notification-panel {
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    line-height: 1.6;
+    color: var(--text-primary);
+    background: var(--bg-secondary);
+    overflow-x: hidden;
 }
 
-/* FIXED - Critical dropdown z-index stacking context */
-.user-menu {
-    isolation: isolate;
-}
-
-.user-dropdown {
-    /* Ensure dropdown appears above all other content */
-    position: fixed !important;
-    top: var(--header-height) !important;
-    right: 2rem !important;
-    z-index: 99999 !important;
-}
-
-/* Mobile-specific dropdown positioning */
-@media (max-width: 768px) {
-    .user-dropdown {
-        position: fixed !important;
-        top: var(--header-height) !important;
-        right: 1rem !important;
-        left: 1rem !important;
-        width: auto !important;
-        max-width: none !important;
-    }
-}
-
-/* FIXED - Ensure dropdown is clickable and interactive */
-.user-dropdown.show {
-    display: block !important;
-    opacity: 1 !important;
-    visibility: visible !important;
-    pointer-events: auto !important;
-    transform: translateY(0) !important;
-}
-
-.dropdown-item {
-    position: relative;
-    z-index: 1;
-}
-
-/* FIXED - Prevent dropdown from being hidden behind other elements */
-body.dropdown-open {
-    overflow: hidden;
-}
-
-.user-dropdown::before {
-    content: '';
-    position: absolute;
-    top: -10px;
-    right: 20px;
-    width: 0;
-    height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-bottom: 10px solid var(--bg-primary);
-    z-index: 1;
-}
-
-.user-dropdown::after {
-    content: '';
-    position: absolute;
-    top: -11px;
-    right: 20px;
-    width: 0;
-    height: 0;
-    border-left: 10px solid transparent;
-    border-right: 10px solid transparent;
-    border-bottom: 10px solid var(--border-color);
-    z-index: 0;
+/* Dashboard Header */
+.dashboard-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--header-height);
+    background: var(--bg-primary);
+    border-bottom: 1px solid var(--border-color);
+    z-index: 1000
 }
